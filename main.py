@@ -1,5 +1,6 @@
 import cv2
 import mediapipe as mp
+from dataclasses import dataclass
 mp_drawing = mp.solutions.drawing_utils
 mp_drawing_styles = mp.solutions.drawing_styles
 mp_hands = mp.solutions.hands
@@ -7,6 +8,12 @@ mp_hands = mp.solutions.hands
 import matplotlib.pyplot as plt
 import numpy as np;
 import math;
+
+@dataclass
+class FakeLandmark:
+  x: float
+  y: float
+  z: float
 
 def weightedSum(data, depth=10):
   weighted_sum = 0;
@@ -20,13 +27,12 @@ def weightedSum(data, depth=10):
 
   return weighted_sum;
 
+def getAreaFromLandmarks(landmarks):
 
-def getAreaFromScreenLandmarks(screen_landmarks):
+  min_x, max_x = landmarks[0].x, landmarks[0].x;
+  min_y, max_y = landmarks[0].y, landmarks[0].y;
 
-  min_x, max_x = screen_landmarks[0].x, screen_landmarks[0].x;
-  min_y, max_y = screen_landmarks[0].y, screen_landmarks[0].y;
-
-  for landmark in screen_landmarks[1:]:
+  for landmark in landmarks[1:]:
     
     if (landmark.x > max_x):
       max_x = landmark.x;
@@ -37,34 +43,10 @@ def getAreaFromScreenLandmarks(screen_landmarks):
     if (landmark.y < min_y):
       min_y = landmark.y;
 
-  return (max_x - min_x) * (max_y - min_y);
-
-def getAreaFromWorldLandmarks(world_landmarks):
-  min_x = 0;
-  min_y = 0;
-  max_x = 0;
-  max_y = 0;
-
-  flag = True;
-
-  for landmark in world_landmarks:
-    if (flag):
-      min_x = landmark.x;
-      max_x = landmark.x;
-      min_y = landmark.y;
-      max_y = landmark.y;
-      flag = False;
-    else:
-      if (landmark.x > max_x):
-        max_x = landmark.x;
-      if (landmark.x < min_x):
-        min_x = landmark.x;
-      if (landmark.y > max_y):
-        max_y = landmark.y;
-      if (landmark.y < min_y):
-        min_y = landmark.y;
-  
-  return (max_x - min_x) * (max_y - min_y);
+  return (min_x, min_y), (max_x, max_y), (max_x - min_x) * (max_y - min_y);
+ 
+def transformScreenLandmarks(landmarks, image):
+  return [FakeLandmark(landmark.x * image.shape[1], landmark.y * image.shape[0], 0) for landmark in landmarks];
 
 # For webcam input:
 cap = cv2.VideoCapture(0)
@@ -107,13 +89,18 @@ with mp_hands.Hands(
     image.flags.writeable = True
     image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
 
+    min_p = (0, 0)
+    max_p = (0, 0)
+    smin_p = (0, 0)
+    smax_p = (0, 0)
+
     if results.multi_hand_landmarks:
 
-      world_area = getAreaFromWorldLandmarks(results.multi_hand_world_landmarks[0].landmark) * 10;
-      screen_area = getAreaFromScreenLandmarks(results.multi_hand_landmarks[0].landmark);
+      min_p, max_p, world_area = getAreaFromLandmarks(results.multi_hand_world_landmarks[0].landmark);
+      smin_p, smax_p, screen_area = getAreaFromLandmarks(transformScreenLandmarks(results.multi_hand_landmarks[0].landmark, image));
 
-      data_screen.append(screen_area * 10);
-      data_world.append(world_area * 10);
+      data_screen.append(screen_area / 100000);
+      data_world.append(world_area * 100);
 
       # World area / screen area ^ 3/4
       data_div.append(world_area / (screen_area ** 0.75));
@@ -133,7 +120,7 @@ with mp_hands.Hands(
       line_div.set_ydata(data_div);
       line_smoothed.set_ydata(data_smoothed);
 
-      plt.axis([max(0, x_increment[-1] - 100), x_increment[-1], 0, max(map(max, data_smoothed[-100:], data_div[-100:]))]) #max(max(data_div[-100:]), max(data_screen[-100:]), max(data_world[-100:]))])
+      plt.axis([max(0, x_increment[-1] - 100), x_increment[-1], 0, max(map(max, data_smoothed[-100:], data_div[-100:]))])#, data_screen[-100:], data_world[-100:]))]) #max(max(data_div[-100:]), max(data_screen[-100:]), max(data_world[-100:]))])
       plt.draw()
 
       for hand_landmarks in results.multi_hand_landmarks:
@@ -144,7 +131,10 @@ with mp_hands.Hands(
             mp_drawing_styles.get_default_hand_landmarks_style(),
             mp_drawing_styles.get_default_hand_connections_style())
     
-    cv2.imshow('MediaPipe Hands', cv2.flip(image, 1))
+    image = cv2.rectangle(image, (int(smax_p[0] * image.shape[1]), int(smax_p[1] * image.shape[0])), (int(smin_p[0] * image.shape[1]), int(smin_p[1] * image.shape[0])), (0, 255, 0), 3)
+    image = cv2.rectangle(image, (int(max_p[0] * image.shape[1]), int(max_p[1] * image.shape[0])), (int(min_p[0] * image.shape[1]), int(min_p[1] * image.shape[0])), (255, 0, 0), 3)
+    image = cv2.flip(image, 1)
+    cv2.imshow('MediaPipe Hands', image)
     if cv2.waitKey(5) & 0xFF == 27:
       break
 
