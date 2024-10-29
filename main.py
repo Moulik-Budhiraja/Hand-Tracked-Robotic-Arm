@@ -55,7 +55,15 @@ def getAmountHandClosed(landmarks):
   vec2 = (landmarks[6].x - landmarks[5].x, landmarks[6].y - landmarks[5].y, landmarks[6].z - landmarks[5].z);
 
   return abs((vec1[0] * vec2[0] + vec1[1] * vec2[1] + vec1[2] * vec2[2]) / (math.sqrt(vec1[0] ** 2 + vec1[1] ** 2 + vec1[2] ** 2) * math.sqrt(vec2[0] ** 2 + vec2[1] ** 2 + vec2[2] ** 2)));
-  
+
+def getX(landmark):
+  return landmark.x;
+
+def getY(landmark):
+  return landmark.y;
+
+def getZ(landmark):
+  return landmark.z;
 
 # For webcam input:
 cap = cv2.VideoCapture(0)
@@ -67,22 +75,33 @@ with mp_hands.Hands(
     min_tracking_confidence=0.5) as hands:
   
   plt.ion();
-  
-  line_screen, = plt.plot([], [], label="screen");
-  line_world, = plt.plot([], [], label="world");
-  line_div, = plt.plot([], [], label="combined");
-  line_smoothed, = plt.plot([], [], label="combined_smoothed");
 
-  plt.legend(loc="upper left")
-  
-  data_screen = [0];
-  data_world = [0];
-  data_div = [0];
-  data_smoothed = [0];
-  x_increment = [0];
+  # Figure for distance graphs
+  fig = plt.figure();
+  ax = fig.add_subplot()
 
-  area_open = 10
-  area_closed = 9
+  line_screen, = ax.plot([], [], label="screen");
+  line_world, = ax.plot([], [], label="world");
+  line_div, = ax.plot([], [], label="combined");
+  line_smoothed, = ax.plot([], [], label="combined_smoothed");
+
+  fig.legend(loc="upper left")
+
+  # Figure for hand coordinate scatterplot
+  fig_scatter = plt.figure()
+  ax_scatter = fig_scatter.add_subplot(projection="3d")
+  scatterplot = ax_scatter.scatter([], [], [], s=50)
+  scatterline = ax_scatter.plot([], [], []);
+
+  # Initial data
+  data_screen = [];
+  data_world = [];
+  data_div = [];
+  data_smoothed = [];
+  x_increment = [];
+
+  # area_open = 9
+  # area_closed = 10
 
   while cap.isOpened():
 
@@ -111,18 +130,19 @@ with mp_hands.Hands(
       min_p, max_p, world_area = getAreaFromLandmarks(results.multi_hand_world_landmarks[0].landmark);
       smin_p, smax_p, screen_area = getAreaFromLandmarks(transformScreenLandmarks(results.multi_hand_landmarks[0].landmark, image));
 
-      world_area *= (area_open / area_closed) * (1 - getAmountHandClosed(results.multi_hand_world_landmarks[0].landmark))
+      screen_area /= 100000
+      world_area *= 100
 
-      key = cv2.waitKey(5)
-      if key == ord("o"):
-        print("Capture open hand")
-        area_open = screen_area
-      elif key == ord("p"):
-        print("Capture Closed Hand")
-        area_closed = screen_area
+      # key = cv2.waitKey(5)
+      # if key == ord("o"):
+      #   print("Capture open hand")
+      #   area_open = screen_area
+      # elif key == ord("p"):
+      #   print("Capture Closed Hand")
+      #   area_closed = screen_area
 
-      data_screen.append(screen_area / 100000);
-      data_world.append(world_area * 100);
+      data_screen.append(screen_area);
+      data_world.append(world_area);
 
       # World area / screen area ^ 3/4
       data_div.append(world_area / (screen_area ** 0.75));
@@ -130,7 +150,7 @@ with mp_hands.Hands(
       # Weighted sum of last 20 datapoints in attempt to smooth out data
       data_smoothed.append(weightedSum(data_div, 20));
       
-      x_increment.append(x_increment[-1] + 1);
+      x_increment.append(x_increment[-1] + 1 if len(x_increment) > 0 else 0);
 
       # line_screen.set_xdata(x_increment);
       # line_world.set_xdata(x_increment);
@@ -142,7 +162,23 @@ with mp_hands.Hands(
       line_div.set_ydata(data_div);
       line_smoothed.set_ydata(data_smoothed);
 
-      plt.axis([max(0, x_increment[-1] - 100), x_increment[-1], 0, max(map(max, data_smoothed[-100:], data_div[-100:]))])#, data_screen[-100:], data_world[-100:]))]) #max(max(data_div[-100:]), max(data_screen[-100:]), max(data_world[-100:]))])
+      x_scatter_data = list(map(getX, results.multi_hand_world_landmarks[0].landmark));
+      y_scatter_data = list(map(getY, results.multi_hand_world_landmarks[0].landmark));
+      z_scatter_data = list(map(getZ, results.multi_hand_world_landmarks[0].landmark))
+
+      # Plotting hand coordinates
+      ax_scatter.axes.set_xlim(min(x_scatter_data), max(x_scatter_data));
+      ax_scatter.axes.set_ylim(min(y_scatter_data), max(y_scatter_data));
+      ax_scatter.axes.set_zlim(min(z_scatter_data), max(z_scatter_data));
+      scatterplot._offsets3d = (x_scatter_data, y_scatter_data, z_scatter_data)
+
+      # Drawing lines between hand coordinates
+      scatterline[0].set_xdata(x_scatter_data)
+      scatterline[0].set_ydata(y_scatter_data)
+      scatterline[0].set_3d_properties(z_scatter_data)
+
+      ax.set_xbound(0, x_increment[-1])
+      ax.set_ybound(0, max(map(max, data_smoothed[-100:], data_div[-100:])))#, data_screen[-100:], data_world[-100:]))]) #max(max(data_div[-100:]), max(data_screen[-100:]), max(data_world[-100:]))])
       plt.draw()
       plt.pause(0.001)
 
@@ -154,12 +190,19 @@ with mp_hands.Hands(
             mp_drawing_styles.get_default_hand_landmarks_style(),
             mp_drawing_styles.get_default_hand_connections_style())
     
-    image = cv2.rectangle(image, (int(smax_p[0] * image.shape[1]), int(smax_p[1] * image.shape[0])), (int(smin_p[0] * image.shape[1]), int(smin_p[1] * image.shape[0])), (0, 255, 0), 3)
-    image = cv2.rectangle(image, (int(max_p[0] * image.shape[1]), int(max_p[1] * image.shape[0])), (int(min_p[0] * image.shape[1]), int(min_p[1] * image.shape[0])), (255, 0, 0), 3)
+        image = cv2.rectangle(image, (int(smin_p[0]), int(smin_p[1])), (int(smax_p[0]), int(smax_p[1])), (0, 255, 0), 3)
+        image = cv2.rectangle(image, (int(smin_p[0]), int(smin_p[1])), 
+                              (int(smax_p[0]), 
+                              int(smin_p[1] + (max_p[1] * image.shape[0] - min_p[1] * image.shape[0]) * (smax_p[0] - smin_p[0]) / (max_p[0] * image.shape[1] - min_p[0] * image.shape[1])))
+                              , (255, 0, 0), 3)
+        image = cv2.rectangle(image, (int(smin_p[0]), int(smin_p[1])), 
+                              (int(smin_p[0] + (max_p[0] * image.shape[1] - min_p[0] * image.shape[1])), 
+                              int(smin_p[1] + (max_p[1] * image.shape[0] - min_p[1] * image.shape[0])))
+                              , (255, 0, 0), 3)
     image = cv2.flip(image, 1)
 
-    image = cv2.putText(image, f"Open Hand: {area_open}", (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,  0, 0), 2, cv2.LINE_AA)
-    image = cv2.putText(image, f"Closed Hand: {area_closed}", (50, 200), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,  0, 0), 2, cv2.LINE_AA)
+    # image = cv2.putText(image, f"Open Hand: {area_open}", (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,  0, 0), 2, cv2.LINE_AA)
+    # image = cv2.putText(image, f"Closed Hand: {area_closed}", (50, 200), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,  0, 0), 2, cv2.LINE_AA)
     cv2.imshow('MediaPipe Hands', image)
     if cv2.waitKey(5) & 0xFF == 27:
       break
