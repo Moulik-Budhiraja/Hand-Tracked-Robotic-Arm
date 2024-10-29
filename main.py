@@ -162,14 +162,16 @@ with mp_hands.Hands(
       line_div.set_ydata(data_div);
       line_smoothed.set_ydata(data_smoothed);
 
+      palm_indexes = []
+
       x_scatter_data = list(map(getX, results.multi_hand_world_landmarks[0].landmark));
-      y_scatter_data = list(map(getY, results.multi_hand_world_landmarks[0].landmark));
-      z_scatter_data = list(map(getZ, results.multi_hand_world_landmarks[0].landmark))
+      y_scatter_data = list(map(getZ, results.multi_hand_world_landmarks[0].landmark));
+      z_scatter_data = list(map(getY, results.multi_hand_world_landmarks[0].landmark))
 
       # Plotting hand coordinates
-      ax_scatter.axes.set_xlim(min(x_scatter_data), max(x_scatter_data));
-      ax_scatter.axes.set_ylim(min(y_scatter_data), max(y_scatter_data));
-      ax_scatter.axes.set_zlim(min(z_scatter_data), max(z_scatter_data));
+      ax_scatter.axes.set_xlim(-0.1, 0.1);
+      ax_scatter.axes.set_ylim(-0.1, 0.1);
+      ax_scatter.axes.set_zlim(-0.1, 0.1);
       scatterplot._offsets3d = (x_scatter_data, y_scatter_data, z_scatter_data)
 
       # Drawing lines between hand coordinates
