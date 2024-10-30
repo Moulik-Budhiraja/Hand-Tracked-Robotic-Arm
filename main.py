@@ -60,7 +60,7 @@ def getX(landmark):
   return -1 * landmark.x;
 
 def getY(landmark):
-  return -1 * landmark.y;
+  return -landmark.y;
 
 def getZ(landmark):
   return landmark.z;
@@ -99,6 +99,10 @@ with mp_hands.Hands(
   middleline = ax_scatter.plot([], [], [], color="yellow")
   ringline = ax_scatter.plot([], [], [], color="green")
   pinkyline = ax_scatter.plot([], [], [], color="blue")
+
+  ax_scatter.axes.set_xlim(-0.05, 0.15);
+  ax_scatter.axes.set_ylim(-0.05, 0.15);
+  ax_scatter.axes.set_zlim(-0.05, 0.15);
 
   # Initial data
   data_screen = [];
@@ -215,7 +219,6 @@ with mp_hands.Hands(
       middleline[0].set_data_3d(x_middle_data, y_middle_data, z_middle_data)
       ringline[0].set_data_3d(x_ring_data, y_ring_data, z_ring_data)
       pinkyline[0].set_data_3d(x_pinky_data, y_pinky_data, z_pinky_data)
-
 
       ax.set_xbound(0, x_increment[-1])
       ax.set_ybound(0, max(map(max, data_screen[-100:], data_world[-100:])))#, data_screen[-100:], data_world[-100:]))]) #max(max(data_div[-100:]), max(data_screen[-100:]), max(data_world[-100:]))])
