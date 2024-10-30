@@ -32,7 +32,7 @@ def getAreaFromLandmarks(landmarks):
   min_x, max_x = landmarks[0].x, landmarks[0].x;
   min_y, max_y = landmarks[0].y, landmarks[0].y;
 
-  marks = [1, 5, 9, 13, 17]
+  marks = [0, 5, 9, 13, 17]
 
   for landmark in [landmarks[j] for j in marks]:
     
@@ -57,10 +57,10 @@ def getAmountHandClosed(landmarks):
   return abs((vec1[0] * vec2[0] + vec1[1] * vec2[1] + vec1[2] * vec2[2]) / (math.sqrt(vec1[0] ** 2 + vec1[1] ** 2 + vec1[2] ** 2) * math.sqrt(vec2[0] ** 2 + vec2[1] ** 2 + vec2[2] ** 2)));
 
 def getX(landmark):
-  return landmark.x;
+  return -1 * landmark.x;
 
 def getY(landmark):
-  return landmark.y;
+  return -1 * landmark.y;
 
 def getZ(landmark):
   return landmark.z;
@@ -82,16 +82,23 @@ with mp_hands.Hands(
 
   line_screen, = ax.plot([], [], label="screen");
   line_world, = ax.plot([], [], label="world");
-  line_div, = ax.plot([], [], label="combined");
-  line_smoothed, = ax.plot([], [], label="combined_smoothed");
+  # line_div, = ax.plot([], [], label="combined");
+  # line_smoothed, = ax.plot([], [], label="combined_smoothed");
 
   fig.legend(loc="upper left")
 
   # Figure for hand coordinate scatterplot
   fig_scatter = plt.figure()
   ax_scatter = fig_scatter.add_subplot(projection="3d")
+  ax_scatter.view_init(elev=0, azim=0, roll=0)
   scatterplot = ax_scatter.scatter([], [], [], s=50)
-  scatterline = ax_scatter.plot([], [], []);
+  scatterline = ax_scatter.plot([], [], [])
+  palmline = ax_scatter.plot([], [], [], color="red")
+  thumbline = ax_scatter.plot([], [], [], color="black")
+  indexline = ax_scatter.plot([], [], [], color="purple")
+  middleline = ax_scatter.plot([], [], [], color="yellow")
+  ringline = ax_scatter.plot([], [], [], color="green")
+  pinkyline = ax_scatter.plot([], [], [], color="blue")
 
   # Initial data
   data_screen = [];
@@ -110,7 +117,7 @@ with mp_hands.Hands(
     if not success:
       continue
 
-    # To improve performanceb, optionally mark the image as not writeable to
+    # To improve performance, optionally mark the image as not writeable to
     # pass by reference.
     image.flags.writeable = False
     image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
@@ -152,35 +159,66 @@ with mp_hands.Hands(
       
       x_increment.append(x_increment[-1] + 1 if len(x_increment) > 0 else 0);
 
-      # line_screen.set_xdata(x_increment);
-      # line_world.set_xdata(x_increment);
-      line_div.set_xdata(x_increment);
-      line_smoothed.set_xdata(x_increment);
+      line_screen.set_xdata(x_increment);
+      line_world.set_xdata(x_increment);
+      # line_div.set_xdata(x_increment);
+      # line_smoothed.set_xdata(x_increment);
       
-      # line_screen.set_ydata(data_screen);
-      # line_world.set_ydata(data_world);
-      line_div.set_ydata(data_div);
-      line_smoothed.set_ydata(data_smoothed);
+      line_screen.set_ydata(data_screen);
+      line_world.set_ydata(data_world);
+      # line_div.set_ydata(data_div);
+      # line_smoothed.set_ydata(data_smoothed);
 
       palm_indexes = []
 
-      x_scatter_data = list(map(getX, results.multi_hand_world_landmarks[0].landmark));
-      y_scatter_data = list(map(getZ, results.multi_hand_world_landmarks[0].landmark));
+      x_scatter_data = list(map(getZ, results.multi_hand_world_landmarks[0].landmark))
+      y_scatter_data = list(map(getX, results.multi_hand_world_landmarks[0].landmark))
       z_scatter_data = list(map(getY, results.multi_hand_world_landmarks[0].landmark))
 
       # Plotting hand coordinates
+      scatterplot = (x_scatter_data, y_scatter_data, z_scatter_data)
+
       ax_scatter.axes.set_xlim(-0.1, 0.1);
       ax_scatter.axes.set_ylim(-0.1, 0.1);
       ax_scatter.axes.set_zlim(-0.1, 0.1);
-      scatterplot._offsets3d = (x_scatter_data, y_scatter_data, z_scatter_data)
 
-      # Drawing lines between hand coordinates
-      scatterline[0].set_xdata(x_scatter_data)
-      scatterline[0].set_ydata(y_scatter_data)
-      scatterline[0].set_3d_properties(z_scatter_data)
+
+      lines = [[(0, 5), (5, 9), (9, 13), (13, 17), (17, 0), (0, 5)],
+               [(0, 1), (1, 2), (2, 3), (3, 4)],
+               [(5, 6), (6, 7), (7, 8)],
+               [(9, 10), (10, 11), (11, 12)],
+               [(13, 14), (14, 15), (15, 16)],
+               [(17, 18), (18, 19), (19, 20)]]
+      
+      x_palm_data = list(map(getZ, [results.multi_hand_world_landmarks[0].landmark[start] for start, end in lines[0]]))
+      y_palm_data = list(map(getX, [results.multi_hand_world_landmarks[0].landmark[start] for start, end in lines[0]]))
+      z_palm_data = list(map(getY, [results.multi_hand_world_landmarks[0].landmark[start] for start, end in lines[0]]))
+      x_thumb_data = list(map(getZ, [results.multi_hand_world_landmarks[0].landmark[start] for start, end in lines[1]]))
+      y_thumb_data = list(map(getX, [results.multi_hand_world_landmarks[0].landmark[start] for start, end in lines[1]]))
+      z_thumb_data = list(map(getY, [results.multi_hand_world_landmarks[0].landmark[start] for start, end in lines[1]]))
+      x_index_data = list(map(getZ, [results.multi_hand_world_landmarks[0].landmark[start] for start, end in lines[2]]))
+      y_index_data = list(map(getX, [results.multi_hand_world_landmarks[0].landmark[start] for start, end in lines[2]]))
+      z_index_data = list(map(getY, [results.multi_hand_world_landmarks[0].landmark[start] for start, end in lines[2]]))
+      x_middle_data = list(map(getZ, [results.multi_hand_world_landmarks[0].landmark[start] for start, end in lines[3]]))
+      y_middle_data = list(map(getX, [results.multi_hand_world_landmarks[0].landmark[start] for start, end in lines[3]]))
+      z_middle_data = list(map(getY, [results.multi_hand_world_landmarks[0].landmark[start] for start, end in lines[3]]))
+      x_ring_data = list(map(getZ, [results.multi_hand_world_landmarks[0].landmark[start] for start, end in lines[4]]))
+      y_ring_data = list(map(getX, [results.multi_hand_world_landmarks[0].landmark[start] for start, end in lines[4]]))
+      z_ring_data = list(map(getY, [results.multi_hand_world_landmarks[0].landmark[start] for start, end in lines[4]]))
+      x_pinky_data = list(map(getZ, [results.multi_hand_world_landmarks[0].landmark[start] for start, end in lines[5]]))
+      y_pinky_data = list(map(getX, [results.multi_hand_world_landmarks[0].landmark[start] for start, end in lines[5]]))
+      z_pinky_data = list(map(getY, [results.multi_hand_world_landmarks[0].landmark[start] for start, end in lines[5]]))
+
+      palmline[0].set_data_3d(x_palm_data, y_palm_data, z_palm_data)
+      thumbline[0].set_data_3d(x_thumb_data, y_thumb_data, z_thumb_data)
+      indexline[0].set_data_3d(x_index_data, y_index_data, z_index_data)
+      middleline[0].set_data_3d(x_middle_data, y_middle_data, z_middle_data)
+      ringline[0].set_data_3d(x_ring_data, y_ring_data, z_ring_data)
+      pinkyline[0].set_data_3d(x_pinky_data, y_pinky_data, z_pinky_data)
+
 
       ax.set_xbound(0, x_increment[-1])
-      ax.set_ybound(0, max(map(max, data_smoothed[-100:], data_div[-100:])))#, data_screen[-100:], data_world[-100:]))]) #max(max(data_div[-100:]), max(data_screen[-100:]), max(data_world[-100:]))])
+      ax.set_ybound(0, max(map(max, data_screen[-100:], data_world[-100:])))#, data_screen[-100:], data_world[-100:]))]) #max(max(data_div[-100:]), max(data_screen[-100:]), max(data_world[-100:]))])
       plt.draw()
       plt.pause(0.001)
 
@@ -194,7 +232,7 @@ with mp_hands.Hands(
     
         image = cv2.rectangle(image, (int(smin_p[0]), int(smin_p[1])), (int(smax_p[0]), int(smax_p[1])), (0, 255, 0), 3)
         image = cv2.rectangle(image, (int(smin_p[0]), int(smin_p[1])), 
-                              (int(smax_p[0]), 
+                              (int(smax_p[0]),  
                               int(smin_p[1] + (max_p[1] * image.shape[0] - min_p[1] * image.shape[0]) * (smax_p[0] - smin_p[0]) / (max_p[0] * image.shape[1] - min_p[0] * image.shape[1])))
                               , (255, 0, 0), 3)
         image = cv2.rectangle(image, (int(smin_p[0]), int(smin_p[1])), 
