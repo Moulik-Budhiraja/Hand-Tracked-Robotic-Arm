@@ -62,8 +62,8 @@ def getX(landmark):
 def getY(landmark):
   return -landmark.y;
 
-def getZ(landmark):
-  return landmark.z;
+def getZ(landmark, offset):
+  return landmark.z + offset;
 
 # For webcam input:
 cap = cv2.VideoCapture(0)
@@ -95,10 +95,10 @@ with mp_hands.Hands(
   scatterline = ax_scatter.plot([], [], [])
   palmline = ax_scatter.plot([], [], [], color="red")
   thumbline = ax_scatter.plot([], [], [], color="black")
-  indexline = ax_scatter.plot([], [], [], color="purple")
-  middleline = ax_scatter.plot([], [], [], color="yellow")
-  ringline = ax_scatter.plot([], [], [], color="green")
-  pinkyline = ax_scatter.plot([], [], [], color="blue")
+  indexline = ax_scatter.plot([], [], [], color="black")
+  middleline = ax_scatter.plot([], [], [], color="black")
+  ringline = ax_scatter.plot([], [], [], color="black")
+  pinkyline = ax_scatter.plot([], [], [], color="black")
 
   ax_scatter.axes.set_xlim(-0.05, 0.15);
   ax_scatter.axes.set_ylim(-0.05, 0.15);
@@ -175,16 +175,16 @@ with mp_hands.Hands(
 
       palm_indexes = []
 
-      x_scatter_data = list(map(getZ, results.multi_hand_world_landmarks[0].landmark))
-      y_scatter_data = list(map(getX, results.multi_hand_world_landmarks[0].landmark))
-      z_scatter_data = list(map(getY, results.multi_hand_world_landmarks[0].landmark))
+      # x_scatter_data = list(map(getZ, results.multi_hand_world_landmarks[0].landmark))
+      # y_scatter_data = list(map(getX, results.multi_hand_world_landmarks[0].landmark))
+      # z_scatter_data = list(map(getY, results.multi_hand_world_landmarks[0].landmark))
 
-      # Plotting hand coordinates
-      scatterplot = (x_scatter_data, y_scatter_data, z_scatter_data)
+      # # Plotting hand coordinates
+      # scatterplot = (x_scatter_data, y_scatter_data, z_scatter_data)
 
-      ax_scatter.axes.set_xlim(-0.1, 0.1);
-      ax_scatter.axes.set_ylim(-0.1, 0.1);
-      ax_scatter.axes.set_zlim(-0.1, 0.1);
+      ax_scatter.axes.set_xlim(-0.05, 0.3);
+      ax_scatter.axes.set_ylim(-0.05, 0.3);
+      ax_scatter.axes.set_zlim(-0.05, 0.3);
 
 
       lines = [[(0, 5), (5, 9), (9, 13), (13, 17), (17, 0), (0, 5)],
@@ -194,22 +194,22 @@ with mp_hands.Hands(
                [(13, 14), (14, 15), (15, 16)],
                [(17, 18), (18, 19), (19, 20)]]
       
-      x_palm_data = list(map(getZ, [results.multi_hand_world_landmarks[0].landmark[start] for start, end in lines[0]]))
+      x_palm_data = list(map(lambda landmark : getZ(landmark, data_div[-1] / 5), [results.multi_hand_world_landmarks[0].landmark[start] for start, end in lines[0]]))
       y_palm_data = list(map(getX, [results.multi_hand_world_landmarks[0].landmark[start] for start, end in lines[0]]))
       z_palm_data = list(map(getY, [results.multi_hand_world_landmarks[0].landmark[start] for start, end in lines[0]]))
-      x_thumb_data = list(map(getZ, [results.multi_hand_world_landmarks[0].landmark[start] for start, end in lines[1]]))
+      x_thumb_data = list(map(lambda landmark : getZ(landmark, data_div[-1] / 5), [results.multi_hand_world_landmarks[0].landmark[start] for start, end in lines[1]]))
       y_thumb_data = list(map(getX, [results.multi_hand_world_landmarks[0].landmark[start] for start, end in lines[1]]))
       z_thumb_data = list(map(getY, [results.multi_hand_world_landmarks[0].landmark[start] for start, end in lines[1]]))
-      x_index_data = list(map(getZ, [results.multi_hand_world_landmarks[0].landmark[start] for start, end in lines[2]]))
+      x_index_data = list(map(lambda landmark : getZ(landmark, data_div[-1] / 5), [results.multi_hand_world_landmarks[0].landmark[start] for start, end in lines[2]]))
       y_index_data = list(map(getX, [results.multi_hand_world_landmarks[0].landmark[start] for start, end in lines[2]]))
       z_index_data = list(map(getY, [results.multi_hand_world_landmarks[0].landmark[start] for start, end in lines[2]]))
-      x_middle_data = list(map(getZ, [results.multi_hand_world_landmarks[0].landmark[start] for start, end in lines[3]]))
+      x_middle_data = list(map(lambda landmark : getZ(landmark, data_div[-1] / 5), [results.multi_hand_world_landmarks[0].landmark[start] for start, end in lines[3]]))
       y_middle_data = list(map(getX, [results.multi_hand_world_landmarks[0].landmark[start] for start, end in lines[3]]))
       z_middle_data = list(map(getY, [results.multi_hand_world_landmarks[0].landmark[start] for start, end in lines[3]]))
-      x_ring_data = list(map(getZ, [results.multi_hand_world_landmarks[0].landmark[start] for start, end in lines[4]]))
+      x_ring_data = list(map(lambda landmark : getZ(landmark, data_div[-1] / 5), [results.multi_hand_world_landmarks[0].landmark[start] for start, end in lines[4]]))
       y_ring_data = list(map(getX, [results.multi_hand_world_landmarks[0].landmark[start] for start, end in lines[4]]))
       z_ring_data = list(map(getY, [results.multi_hand_world_landmarks[0].landmark[start] for start, end in lines[4]]))
-      x_pinky_data = list(map(getZ, [results.multi_hand_world_landmarks[0].landmark[start] for start, end in lines[5]]))
+      x_pinky_data = list(map(lambda landmark : getZ(landmark, data_div[-1] / 5), [results.multi_hand_world_landmarks[0].landmark[start] for start, end in lines[5]]))
       y_pinky_data = list(map(getX, [results.multi_hand_world_landmarks[0].landmark[start] for start, end in lines[5]]))
       z_pinky_data = list(map(getY, [results.multi_hand_world_landmarks[0].landmark[start] for start, end in lines[5]]))
 
