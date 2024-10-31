@@ -56,6 +56,12 @@ def getAmountHandClosed(landmarks):
 
   return abs((vec1[0] * vec2[0] + vec1[1] * vec2[1] + vec1[2] * vec2[2]) / (math.sqrt(vec1[0] ** 2 + vec1[1] ** 2 + vec1[2] ** 2) * math.sqrt(vec2[0] ** 2 + vec2[1] ** 2 + vec2[2] ** 2)));
 
+def getAmountHandTilted(landmarks):
+  up_vec = (0, -1, 0);
+  hand_vec = (landmarks[9].x - landmarks[0].x, landmarks[9].y - landmarks[0].y, landmarks[9].z - landmarks[0].z);
+  
+  return (up_vec[0] * hand_vec[0] + up_vec[1] * hand_vec[1] + up_vec[2] * hand_vec[2]) / (math.sqrt(up_vec[0] ** 2 + up_vec[1] ** 2 + up_vec[2] ** 2) * math.sqrt(hand_vec[0] ** 2 + hand_vec[1] ** 2 + hand_vec[2] ** 2))
+
 def getX(landmark):
   return -1 * landmark.x;
 
@@ -82,7 +88,7 @@ with mp_hands.Hands(
 
   line_screen, = ax.plot([], [], label="screen");
   line_world, = ax.plot([], [], label="world");
-  # line_div, = ax.plot([], [], label="combined");
+  line_div, = ax.plot([], [], label="combined");
   # line_smoothed, = ax.plot([], [], label="combined_smoothed");
 
   fig.legend(loc="upper left")
@@ -157,7 +163,10 @@ with mp_hands.Hands(
 
       # World area / screen area ^ 3/4
       data_div.append(world_area / (screen_area ** 0.75));
+      data_div[-1] -= data_div[-1] * 0.3 * ((1 - getAmountHandClosed(results.multi_hand_world_landmarks[0].landmark)) ** 2)# - 5 ** (1 - getAmountHandTilted(results.multi_hand_world_landmarks[0].landmark)));
+      # data_div[-1] += data_div[-1] * 0.5 * (1 - getAmountHandTilted(results.multi_hand_world_landmarks[0].landmark) ** 2)
 
+      print(1 - getAmountHandTilted(results.multi_hand_world_landmarks[0].landmark))
       # Weighted sum of last 20 datapoints in attempt to smooth out data
       data_smoothed.append(weightedSum(data_div, 20));
       
@@ -165,12 +174,12 @@ with mp_hands.Hands(
 
       line_screen.set_xdata(x_increment);
       line_world.set_xdata(x_increment);
-      # line_div.set_xdata(x_increment);
+      line_div.set_xdata(x_increment);
       # line_smoothed.set_xdata(x_increment);
       
       line_screen.set_ydata(data_screen);
       line_world.set_ydata(data_world);
-      # line_div.set_ydata(data_div);
+      line_div.set_ydata(data_div);
       # line_smoothed.set_ydata(data_smoothed);
 
       palm_indexes = []
@@ -220,8 +229,8 @@ with mp_hands.Hands(
       ringline[0].set_data_3d(x_ring_data, y_ring_data, z_ring_data)
       pinkyline[0].set_data_3d(x_pinky_data, y_pinky_data, z_pinky_data)
 
-      ax.set_xbound(0, x_increment[-1])
-      ax.set_ybound(0, max(map(max, data_screen[-100:], data_world[-100:])))#, data_screen[-100:], data_world[-100:]))]) #max(max(data_div[-100:]), max(data_screen[-100:]), max(data_world[-100:]))])
+      ax.set_xbound(0, max(x_increment[-100:]))
+      ax.set_ybound(0, max(map(max, data_screen[-100:], data_world[-100:], data_div[-100:])))#, data_screen[-100:], data_world[-100:]))]) #max(max(data_div[-100:]), max(data_screen[-100:]), max(data_world[-100:]))])
       plt.draw()
       plt.pause(0.001)
 
