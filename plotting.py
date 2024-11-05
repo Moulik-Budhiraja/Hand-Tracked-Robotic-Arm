@@ -49,7 +49,7 @@ def plotting_process(data_queue: Queue):
     (scatter_ring,) = ax_scatter.plot([], [], [], marker="o", color="green", linestyle="-", label="Ring")
     (scatter_pinky,) = ax_scatter.plot([], [], [], marker="o", color="blue", linestyle="-", label="Pinky")
 
-    ax_scatter.set_xlim(0.1, 0.6)
+    ax_scatter.set_xlim(-0.1, 0.1)
     ax_scatter.set_ylim(-0.1, 0.1)
     ax_scatter.set_zlim(-0.1, 0.1)
     ax_scatter.legend()

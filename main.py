@@ -86,7 +86,7 @@ def main():
 
                     z_off = getZOffset(results.multi_hand_landmarks[0].landmark)
                     data_div_value -= z_off
-                    print(z_off)
+                    data_div_value = data_div_value - 1
 
                     key = cv2.waitKey(5) & 0xFF
                     if key == ord("c"):
@@ -232,7 +232,7 @@ def main():
                 )
 
                 # Display the image
-                cv2.imshow("MediaPipe Hands", image)
+                cv2.imshow("MediaPipe Hands", cv2.resize(image, (image.shape[1] // 2, image.shape[0] // 2)))
                 if cv2.waitKey(5) & 0xFF == 27:
                     break
 

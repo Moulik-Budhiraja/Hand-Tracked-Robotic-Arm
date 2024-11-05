@@ -4,7 +4,7 @@ import pandas as pd
 import torch.optim as optim
 
 # Load the data from CSV
-data = pd.read_csv("data.csv")
+data = pd.read_csv("cam data.csv")
 
 # Convert the DataFrame to a PyTorch tensor
 target = torch.tensor(data["est_z"].values, dtype=torch.float32)
