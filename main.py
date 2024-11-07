@@ -120,6 +120,8 @@ with mp_hands.Hands(
 
       x_increment.append(x_increment[-1] + 1 if len(x_increment) > 0 else 0);
 
+      if (len(data_div) >= 2):
+        data_div[-1] = data_div[-2] * 0.8 + data_div[-1] * 0.2
       
       # Plotting debug data
       line_screen.set_xdata(x_increment);
@@ -171,7 +173,7 @@ with mp_hands.Hands(
       pinkyline[0].set_data_3d(x_pinky_data, y_pinky_data, z_pinky_data)
 
       ax.set_xbound(min(x_increment[-100:]), max(x_increment[-100:]))
-      ax.set_ybound(0, max(map(max, data_screen[-100:], data_world[-100:], data_div[-100:])))#, data_screen[-100:], data_world[-100:]))]) #max(max(data_div[-100:]), max(data_screen[-100:]), max(data_world[-100:]))])
+      ax.set_ybound(0, max(data_div[-100:]))#, data_screen[-100:], data_world[-100:]))]) #max(max(data_div[-100:]), max(data_screen[-100:]), max(data_world[-100:]))])
       plt.draw()
       plt.pause(0.001)
 
