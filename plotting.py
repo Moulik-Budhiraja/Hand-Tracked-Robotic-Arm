@@ -7,6 +7,14 @@ class plot:
     def __init__(self):
         plt.ion()
 
+        self.fig_coords = plt.figure()
+        self.ax_coords = self.fig_coords.add_subplot()
+        self.x_data, self.y_data, self.z_data, self.time_data = [], [], [], []
+        self.x_line, = self.ax_coords.plot([], [], label="x")
+        self.y_line, = self.ax_coords.plot([], [], label="y")
+        self.z_line, = self.ax_coords.plot([], [], label="z")
+        self.fig_coords.legend(loc="upper left")
+
         self.fig_scatter = plt.figure()
         self.ax_scatter = self.fig_scatter.add_subplot(projection="3d")
         self.ax_scatter.view_init(elev=90, azim=90, roll=0)
@@ -41,3 +49,30 @@ class plot:
 
         self.fig_scatter.canvas.draw()
         self.fig_scatter.canvas.flush_events()
+
+    def update_2d_plot(self, frame, x, y, z):
+        self.time_data.append(frame)
+        self.x_data.append(x)
+        self.y_data.append(y)
+        self.z_data.append(z)
+
+        self.x_line.set_xdata(self.time_data)
+        self.y_line.set_xdata(self.time_data)
+        self.z_line.set_xdata(self.time_data)
+
+        self.x_line.set_ydata(self.x_data)
+        self.y_line.set_ydata(self.y_data)
+        self.z_line.set_ydata(self.z_data)
+        
+
+
+        if len(self.time_data) > 50:
+            self.ax_coords.set_xlim(max(0, frame - 50), frame)
+        else:
+            self.ax_coords.set_xlim(0, 50)
+        
+        self.ax_coords.set_ylim(0, 2) 
+
+        self.fig_coords.canvas.draw()
+        self.fig_coords.canvas.flush_events()
+

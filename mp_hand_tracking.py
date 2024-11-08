@@ -22,3 +22,13 @@ def process_image(hands, image):
 
     image.flags.writeable = True
     return results
+
+def hand_connections(image, hand_landmarks, coordinates):
+    for hand_landmarks in coordinates:
+        mp.solutions.drawing_utils.draw_landmarks(
+            image,
+            hand_landmarks,
+            mp.solutions.hands.HAND_CONNECTIONS,
+            mp.solutions.drawing_styles.get_default_hand_landmarks_style(),
+            mp.solutions.drawing_styles.get_default_hand_connections_style()
+        )

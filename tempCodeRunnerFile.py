@@ -1,0 +1,1 @@
+            plotter.update_2d_plot(frame_counter, x_data[0][0], y_data[0][0], z_data[0][0])

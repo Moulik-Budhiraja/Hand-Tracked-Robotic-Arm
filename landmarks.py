@@ -4,16 +4,23 @@ from dataclasses import dataclass
 import numpy as np
 import math
 
-# @dataclass
-# class FakeLandmark:
-#     x: float
-#     y: float
-#     z: float
+@dataclass
+class FakeLandmark:
+    x: float
+    y: float
+    z: float
 
 def calculate_distance(landmark1, landmark2, width, height):
     dx = (landmark1.x - landmark2.x) * width
     dy = (landmark1.y - landmark2.y) * height
     return np.sqrt(dx*dx + dy*dy)
+
+def calculate_world_coordinates(centre, landmark):
+    world_coords = FakeLandmark
+    world_coords.x = landmark.x - centre.x
+    world_coords.y = landmark.y - centre.y
+    world_coords.z = landmark.z - centre.z
+    return world_coords
 
 
 # def get_distance_from_landmarks(landmarks, a, b):
