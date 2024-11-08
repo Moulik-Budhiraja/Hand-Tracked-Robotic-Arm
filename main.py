@@ -15,9 +15,9 @@ class FakeLandmark:
   y: float
   z: float
 
-def getAreaFromLandmarks(landmarks):
+def getAreaFromLandmarks(landmarks, a, b):
 
-  return math.sqrt((landmarks[5].x - landmarks[17].x)**2 + (landmarks[5].y - landmarks[17].y)**2);
+  return math.sqrt((landmarks[a].x - landmarks[b].x)**2 + (landmarks[a].y - landmarks[b].y)**2);
  
 def transformScreenLandmarks(landmarks, image):
   return [FakeLandmark(landmark.x * image.shape[1], landmark.y * image.shape[0], 0) for landmark in landmarks];
@@ -41,7 +41,7 @@ def getZ(landmark, offset):
 cap = cv2.VideoCapture(0)
 
 with mp_hands.Hands(
-    model_complexity=0,
+    model_complexity=1,
     min_detection_confidence=0.5,
     max_num_hands=1,
     min_tracking_confidence=0.5) as hands:
@@ -105,23 +105,22 @@ with mp_hands.Hands(
 
     if results.multi_hand_landmarks:
 
-      world_area = getAreaFromLandmarks(results.multi_hand_world_landmarks[0].landmark);
-      screen_area = getAreaFromLandmarks(transformScreenLandmarks(results.multi_hand_landmarks[0].landmark, image));
-
-      screen_area /= 10;
-      world_area *= 100
+      world_area = getAreaFromLandmarks(results.multi_hand_world_landmarks[0].landmark, 5, 17) + getAreaFromLandmarks(results.multi_hand_world_landmarks[0].landmark, 0, 9);
+      screen_area = getAreaFromLandmarks(transformScreenLandmarks(results.multi_hand_landmarks[0].landmark, image), 5, 17) + getAreaFromLandmarks(transformScreenLandmarks(results.multi_hand_landmarks[0].landmark, image), 0, 9);
 
       data_screen.append(screen_area);
       data_world.append(world_area);
 
-      # World area / screen area ^ 3/4
-      data_div.append(world_area / (screen_area ** 0.75));
-      data_div[-1] -= data_div[-1] * 0.3 * ((1 - getAmountHandClosed(results.multi_hand_world_landmarks[0].landmark)) ** 2)# - 5 ** (1 - getAmountHandTilted(results.multi_hand_world_landmarks[0].landmark)));
-
       x_increment.append(x_increment[-1] + 1 if len(x_increment) > 0 else 0);
 
+      # World area / screen area ^ 3/4
+      data_div.append(world_area * 1000 / screen_area);
+
+      # data_div[-1] -= data_div[-1] * 0.3 * ((1 - getAmountHandClosed(results.multi_hand_world_landmarks[0].landmark)) ** 2)# - 5 ** (1 - getAmountHandTilted(results.multi_hand_world_landmarks[0].landmark)));
+      data_div[-1] = data_div[-1] * 3 - 0.6
+
       if (len(data_div) >= 2):
-        data_div[-1] = data_div[-2] * 0.8 + data_div[-1] * 0.2
+        data_div[-1] = data_div[-2] * 0.6 + data_div[-1] * 0.4
       
       # Plotting debug data
       line_screen.set_xdata(x_increment);
