@@ -22,6 +22,18 @@ def calculate_world_coordinates(centre, landmark):
     world_coords.z = landmark.z - centre.z
     return world_coords
 
+def calculate_center(point, center, sensitivity):
+        center.x = ((point.x - center.x) * (1 - sensitivity)) + center.x
+        center.y = ((point.y - center.y) * (1 - sensitivity)) + center.y
+        center.z = ((point.z - center.z) * (1 - sensitivity)) + center.z
+
+        return center
+
+def getAmountHandClosed(landmarks):
+  vec1 = (landmarks[5].x - landmarks[0].x, landmarks[5].y - landmarks[0].y, landmarks[5].z - landmarks[0].z);
+  vec2 = (landmarks[6].x - landmarks[5].x, landmarks[6].y - landmarks[5].y, landmarks[6].z - landmarks[5].z);
+
+  return abs((vec1[0] * vec2[0] + vec1[1] * vec2[1] + vec1[2] * vec2[2]) / (math.sqrt(vec1[0] ** 2 + vec1[1] ** 2 + vec1[2] ** 2) * math.sqrt(vec2[0] ** 2 + vec2[1] ** 2 + vec2[2] ** 2)));
 
 # def get_distance_from_landmarks(landmarks, a, b):
 #     return math.sqrt((landmarks[a].x - landmarks[b].x) ** 2 + (landmarks[a].y - landmarks[b].y) ** 2)
