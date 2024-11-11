@@ -8,13 +8,30 @@ from plotting import plotting_process
 from imutils.video import WebcamVideoStream
 import imutils
 import multiprocessing
-import time
+import math
 
 @dataclass
 class coordinates:
     x: float
     y: float
     z: float
+
+def getAreaFromLandmarks(landmarks, a, b):
+
+  return math.sqrt((landmarks[a].x - landmarks[b].x)**2 + (landmarks[a].y - landmarks[b].y)**2);
+ 
+def transformScreenLandmarks(landmarks, image):
+  return [coordinates(landmark.x * image.shape[1], landmark.y * image.shape[0], 0) for landmark in landmarks];
+
+def getAmountHandClosed(landmarks):
+  vec1 = (landmarks[5].x - landmarks[0].x, landmarks[5].y - landmarks[0].y, landmarks[5].z - landmarks[0].z);
+  vec2 = (landmarks[6].x - landmarks[5].x, landmarks[6].y - landmarks[5].y, landmarks[6].z - landmarks[5].z);
+
+  return abs((vec1[0] * vec2[0] + vec1[1] * vec2[1] + vec1[2] * vec2[2]) / (math.sqrt(vec1[0] ** 2 + vec1[1] ** 2 + vec1[2] ** 2) * math.sqrt(vec2[0] ** 2 + vec2[1] ** 2 + vec2[2] ** 2)));
+
+def getAmountHandTilted(landmarks):
+    vec = (landmarks[5].x - landmarks[0].x, landmarks[5].y - landmarks[0].y, landmarks[5].z - landmarks[0].z);
+    return max(0, -vec[2] / math.sqrt(vec[0] ** 2 + vec[1] ** 2 + vec[2] ** 2))
 
 def main():
     plot_queue = multiprocessing.Queue()
@@ -49,35 +66,43 @@ def main():
             hand_landmarks = results.multi_hand_landmarks[0]
             wrist_screen, middle_knuckle_screen = hand_landmarks.landmark[0], hand_landmarks.landmark[9]
             index_knuckle_screen, pinky_knuckle_screen = hand_landmarks.landmark[5], hand_landmarks.landmark[17]
-            current_distance_vertical = calculate_distance(wrist_screen, middle_knuckle_screen, width, height)
-            current_distance_horizontal = calculate_distance(index_knuckle_screen, pinky_knuckle_screen, width, height)
+            # current_distance_vertical = calculate_distance(wrist_screen, middle_knuckle_screen, width, height)
+            # current_distance_horizontal = calculate_distance(index_knuckle_screen, pinky_knuckle_screen, width, height)
 
             world_landmarks = results.multi_hand_world_landmarks[0]
             centre_world = world_landmarks.landmark[0]
 
-            if reset:
-                reference_distance_vertical = current_distance_vertical
-                reference_distance_horizontal = current_distance_horizontal
-                reference_distance_depth = 1
-                estimated_distance = reference_distance_depth
-                prev_estimated_distance = reference_distance_depth
-                reset = False
-            else:
-                prev_estimated_distance = estimated_distance
+            # if reset:
+            #     reference_distance_vertical = current_distance_vertical
+            #     reference_distance_horizontal = current_distance_horizontal
+            #     reference_distance_depth = 1
+            #     estimated_distance = reference_distance_depth
+            #     prev_estimated_distance = reference_distance_depth
+            #     reset = False
+            # else:
+            #     prev_estimated_distance = estimated_distance
 
-            scale_vertical = current_distance_vertical / reference_distance_vertical
-            scale_horizontal = current_distance_horizontal / reference_distance_horizontal
-            if (scale_vertical * 0.95 > scale_horizontal):
-                estimated_distance = reference_distance_depth / scale_vertical
-            else:
-                estimated_distance = reference_distance_depth / scale_horizontal - (index_knuckle_screen.z + pinky_knuckle_screen.z) / 2 
+            # scale_vertical = current_distance_vertical / reference_distance_vertical
+            # scale_horizontal = current_distance_horizontal / reference_distance_horizontal
+            # if (scale_vertical * 0.95 > scale_horizontal):
+            #     estimated_distance = reference_distance_depth / scale_vertical
+            # else:
+            #     estimated_distance = reference_distance_depth / scale_horizontal - (index_knuckle_screen.z + pinky_knuckle_screen.z) / 2 
 
-            if reset:
-                pass 
-            else:
-                estimated_distance = 0.4 * prev_estimated_distance + 0.6 * estimated_distance - 0.3
+            # if reset:
+            #     pass 
+            # else:
+            #     estimated_distance = 0.4 * prev_estimated_distance + 0.6 * estimated_distance - 0.3
 
-            wrist_screen.z = estimated_distance
+            print(getAmountHandTilted(results.multi_hand_world_landmarks[0].landmark))
+            world_area = getAreaFromLandmarks(results.multi_hand_world_landmarks[0].landmark, 5, 17) + getAreaFromLandmarks(results.multi_hand_world_landmarks[0].landmark, 0, 9);
+            screen_area = getAreaFromLandmarks(transformScreenLandmarks(results.multi_hand_landmarks[0].landmark, image), 5, 17) + getAreaFromLandmarks(transformScreenLandmarks(results.multi_hand_landmarks[0].landmark, image), 0, 9);
+
+            wrist_screen.z = world_area * 200 / screen_area;
+            wrist_screen.z += wrist_screen.z * 0.7 * getAmountHandTilted(results.multi_hand_world_landmarks[0].landmark) ** 2.3;
+            # wrist_screen.z = wrist_screen.z * 0.3 
+
+            # print(wrist_screen.z);
 
             wrist_screen.x -= 0.5
             wrist_screen.y -= 0.5
