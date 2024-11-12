@@ -1,151 +1,144 @@
+####################
+#
+# file: main.py
+#
+# description: Converts real-time video footage of hand movement into 3d coordinates for the hand.
+#
+####################
+
 import cv2
-import mediapipe as mp
-mp_drawing = mp.solutions.drawing_utils
-mp_drawing_styles = mp.solutions.drawing_styles
-mp_hands = mp.solutions.hands
+from landmarks import Coordinate, get_amount_hand_tilted, transform_screen_landmarks, get_length_from_landmarks, calculate_world_coordinates, calculate_center
+from mp_hand_tracking import initialize_hand_detector, process_image, hand_connections
+from plotting import plotting_process
+from imutils.video import WebcamVideoStream
+import imutils
+import multiprocessing
 
-import matplotlib.pyplot as plt
-import numpy as np;
-import math;
+def main():
 
-def weightedSum(data, depth=10):
-  weighted_sum = 0;
-  denom = 2 ** depth;
+    #Starting multiprocess
+    plot_queue = multiprocessing.Queue()
+    control_queue = multiprocessing.Queue()
 
-  counter = 1;
+    plot_proc = multiprocessing.Process(target=plotting_process, args=(plot_queue, control_queue))
+    plot_proc.start()
 
-  for i in data[-depth:]:
-    weighted_sum += (2 ** counter) * i / denom;
-    counter += 1;
+    # Initialize webcam and hand tracking
+    vs = WebcamVideoStream(src=0).start()   
+    hands = initialize_hand_detector()
+    open_camera = True
 
-  return weighted_sum;
+    frame_counter = 0
+    center = Coordinate(x=0, y=0, z=0)
+    sensitivity = 1
+    prev_sensitivity = 1
 
+    while open_camera:
+        key = cv2.waitKey(20)
+        image = vs.read() 
+        image = imutils.resize(image, width=400)
 
-def getAreaFromScreenLandmarks(screen_landmarks):
+        results = process_image(hands, image)
 
-  min_x, max_x = screen_landmarks[0].x, screen_landmarks[0].x;
-  min_y, max_y = screen_landmarks[0].y, screen_landmarks[0].y;
+        if results.multi_hand_landmarks:
+            
+            hand_landmarks = results.multi_hand_landmarks[0]
+            wrist_screen = hand_landmarks.landmark[0]
+            world_landmarks = results.multi_hand_world_landmarks[0]
+            centre_world = world_landmarks.landmark[0]
 
-  for landmark in screen_landmarks[1:]:
-    
-    if (landmark.x > max_x):
-      max_x = landmark.x;
-    if (landmark.x < min_x):
-      min_x = landmark.x;
-    if (landmark.y > max_y):
-      max_y = landmark.y;
-    if (landmark.y < min_y):
-      min_y = landmark.y;
+            # Calculating depth (wrist z coordinate)
+            world_length = get_length_from_landmarks(results.multi_hand_world_landmarks[0].landmark, 5, 17) + get_length_from_landmarks(results.multi_hand_world_landmarks[0].landmark, 0, 9);
+            screen_length = get_length_from_landmarks(transform_screen_landmarks(results.multi_hand_landmarks[0].landmark, image), 5, 17) + get_length_from_landmarks(transform_screen_landmarks(results.multi_hand_landmarks[0].landmark, image), 0, 9);
 
-  return (max_x - min_x) * (max_y - min_y);
+            wrist_screen.z = world_length * 200 / screen_length;
+            wrist_screen.z += wrist_screen.z * 0.65 * get_amount_hand_tilted(results.multi_hand_world_landmarks[0].landmark) ** 2.3;
 
-def getAreaFromWorldLandmarks(world_landmarks):
-  min_x = 0;
-  min_y = 0;
-  max_x = 0;
-  max_y = 0;
+            parts = {
+                "palm": [0, 5, 9, 13, 17, 0],
+                "thumb": [0, 1, 2, 3, 4],
+                "index": [5, 6, 7, 8],
+                "middle": [9, 10, 11, 12],
+                "ring": [13, 14, 15, 16],
+                "pinky": [17, 18, 19, 20]
+            }
 
-  flag = True;
+            x_data = []
+            y_data = []
+            z_data = []
 
-  for landmark in world_landmarks:
-    if (flag):
-      min_x = landmark.x;
-      max_x = landmark.x;
-      min_y = landmark.y;
-      max_y = landmark.y;
-      flag = False;
-    else:
-      if (landmark.x > max_x):
-        max_x = landmark.x;
-      if (landmark.x < min_x):
-        min_x = landmark.x;
-      if (landmark.y > max_y):
-        max_y = landmark.y;
-      if (landmark.y < min_y):
-        min_y = landmark.y;
-  
-  return (max_x - min_x) * (max_y - min_y);
+            # Creating coordinate datapoints for hand
+            for part in parts.values():
+                x_part = []
+                y_part = []
+                z_part = []
+                for idx in part:
+                    landmark = calculate_world_coordinates(centre_world, world_landmarks.landmark[idx])
 
-# For webcam input:
-cap = cv2.VideoCapture(0)
+                    scaled_x = (landmark.x) + ((wrist_screen.x - 0.5) * sensitivity) + center.x
+                    scaled_y = (landmark.y) + ((wrist_screen.y - 0.5) * sensitivity) + center.y
+                    scaled_z = (landmark.z) + ((wrist_screen.z - 0.5) * sensitivity) + center.z
 
-with mp_hands.Hands(
-    model_complexity=0,
-    min_detection_confidence=0.5,
-    max_num_hands=1,
-    min_tracking_confidence=0.5) as hands:
-  
-  plt.ion();
-  
-  line_screen, = plt.plot([], [], label="screen");
-  line_world, = plt.plot([], [], label="world");
-  line_div, = plt.plot([], [], label="combined");
-  line_smoothed, = plt.plot([], [], label="combined_smoothed");
+                    x_part.append(scaled_x)
+                    y_part.append(scaled_y)
+                    z_part.append(scaled_z)
 
-  plt.legend(loc="upper left")
-  
-  data_screen = [0];
-  data_world = [0];
-  data_div = [0];
-  data_smoothed = [0];
-  x_increment = [0];
+                x_data.append(x_part)
+                y_data.append(y_part)
+                z_data.append(z_part)
 
-  while cap.isOpened():
+            plot_queue.put({
+                "type": "scatter",
+                "x_data": x_data,
+                "y_data": y_data,
+                "z_data": z_data,
+                "center": center,
+                "sensitivity": sensitivity
+            })
 
-    success, image = cap.read()
+            frame_counter += 1
 
-    if not success:
-      continue
+            hand_connections(image, results.multi_hand_landmarks)
 
-    # To improve performanceb, optionally mark the image as not writeable to
-    # pass by reference.
-    image.flags.writeable = False
-    image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-    results = hands.process(image)
+        image = cv2.flip(image, 1)
 
-    # Draw the hand annotations on the image.
-    image.flags.writeable = True
-    image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+        cv2.imshow('MediaPipe Hands', image)
 
-    if results.multi_hand_landmarks:
+        # Handle key presses
+        if key & 0xFF == ord('a'):
+            if sensitivity > 0.1:
+                print("decreased sensitivity")
+                sensitivity -= 0.1
+            else:
+                print("min sensitivity reached")
+        if key & 0xFF == ord('d'):
+            if sensitivity < 1:
+                print("increased sensitivity")
+                sensitivity += 0.1
+            else:
+                print("max sensitivity reached")
+        if key & 0xFF == ord('c'):
+            reset = True
+            print("calibrated")
+        if key & 0xFF == ord('q'):
+            open_camera = False
 
-      world_area = getAreaFromWorldLandmarks(results.multi_hand_world_landmarks[0].landmark) * 10;
-      screen_area = getAreaFromScreenLandmarks(results.multi_hand_landmarks[0].landmark);
+        # Update center based on sensitivity changes
+        if sensitivity < prev_sensitivity:
+            center = calculate_center(wrist_screen, center, sensitivity / prev_sensitivity)
+            prev_sensitivity = sensitivity
+        if sensitivity > prev_sensitivity:
+            origin = Coordinate(x=0, y=0, z=0)
+            center = calculate_center(center, origin, sensitivity)
+            prev_sensitivity = sensitivity
 
-      data_screen.append(screen_area * 10);
-      data_world.append(world_area * 10);
+    # Send termination signal to plotting process
+    plot_queue.put("TERMINATE")
+    plot_proc.join()
 
-      # World area / screen area ^ 3/4
-      data_div.append(world_area / (screen_area ** 0.75));
+    cv2.destroyAllWindows()
+    vs.stop()
 
-      # Weighted sum of last 20 datapoints in attempt to smooth out data
-      data_smoothed.append(weightedSum(data_div, 20));
-      
-      x_increment.append(x_increment[-1] + 1);
-
-      # line_screen.set_xdata(x_increment);
-      # line_world.set_xdata(x_increment);
-      line_div.set_xdata(x_increment);
-      line_smoothed.set_xdata(x_increment);
-      
-      # line_screen.set_ydata(data_screen);
-      # line_world.set_ydata(data_world);
-      line_div.set_ydata(data_div);
-      line_smoothed.set_ydata(data_smoothed);
-
-      plt.axis([max(0, x_increment[-1] - 100), x_increment[-1], 0, max(map(max, data_smoothed[-100:], data_div[-100:]))]) #max(max(data_div[-100:]), max(data_screen[-100:]), max(data_world[-100:]))])
-      plt.draw()
-
-      for hand_landmarks in results.multi_hand_landmarks:
-        mp_drawing.draw_landmarks(
-            image,
-            hand_landmarks,
-            mp_hands.HAND_CONNECTIONS,
-            mp_drawing_styles.get_default_hand_landmarks_style(),
-            mp_drawing_styles.get_default_hand_connections_style())
-    
-    cv2.imshow('MediaPipe Hands', cv2.flip(image, 1))
-    if cv2.waitKey(5) & 0xFF == 27:
-      break
-
-cap.release()
+if __name__ == "__main__":
+    multiprocessing.set_start_method('spawn') 
+    main()
