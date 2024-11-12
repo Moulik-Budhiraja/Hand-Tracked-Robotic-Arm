@@ -36,6 +36,6 @@ def hand_connections(image, landmarks):
             image,
             hand_landmarks,
             mp.solutions.hands.HAND_CONNECTIONS,
-            mp.solutions.drawing_styles.get_default_hand_landmarks_style(),
-            mp.solutions.drawing_styles.get_default_hand_connections_style()
+            mp.solutions.drawing_utils.DrawingSpec(circle_radius=0, thickness=0),
+            mp.solutions.drawing_styles.get_default_hand_connections_style(),
         )
