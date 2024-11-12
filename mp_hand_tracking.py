@@ -30,8 +30,8 @@ def process_image(hands, image):
     image.flags.writeable = True
     return results
 
-def hand_connections(image, hand_landmarks, coordinates):
-    for hand_landmarks in coordinates:
+def hand_connections(image, landmarks):
+    for hand_landmarks in landmarks:
         mp.solutions.drawing_utils.draw_landmarks(
             image,
             hand_landmarks,

@@ -54,10 +54,6 @@ def main():
             wrist_screen.z = world_length * 200 / screen_length;
             wrist_screen.z += wrist_screen.z * 0.65 * get_amount_hand_tilted(results.multi_hand_world_landmarks[0].landmark) ** 2.3;
 
-            wrist_screen.x -= 0.5
-            wrist_screen.y -= 0.5
-            wrist_screen.z -= 0.5
-
             parts = {
                 "palm": [0, 5, 9, 13, 17, 0],
                 "thumb": [0, 1, 2, 3, 4],
@@ -79,9 +75,9 @@ def main():
                 for idx in part:
                     landmark = calculate_world_coordinates(centre_world, world_landmarks.landmark[idx])
 
-                    scaled_x = (landmark.x) + (wrist_screen.x * sensitivity) + center.x
-                    scaled_y = (landmark.y) + (wrist_screen.y * sensitivity) + center.y 
-                    scaled_z = (landmark.z) + (wrist_screen.z * sensitivity) + center.z 
+                    scaled_x = (landmark.x) + ((wrist_screen.x - 0.5) * sensitivity) + center.x
+                    scaled_y = (landmark.y) + ((wrist_screen.y - 0.5) * sensitivity) + center.y
+                    scaled_z = (landmark.z) + ((wrist_screen.z - 0.5) * sensitivity) + center.z
 
                     x_part.append(scaled_x)
                     y_part.append(scaled_y)
@@ -102,7 +98,7 @@ def main():
 
             frame_counter += 1
 
-            hand_connections(image, hand_landmarks, results.multi_hand_landmarks)
+            hand_connections(image, results.multi_hand_landmarks)
 
         image = cv2.flip(image, 1)
 
