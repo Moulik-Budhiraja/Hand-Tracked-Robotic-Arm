@@ -1,27 +1,29 @@
-# main.py
+####################
+#
+# file: main.py
+#
+# description: Converts real-time video footage of hand movement into 3d coordinates for the hand.
+#
+####################
 
 import cv2
-from dataclasses import dataclass
-from landmarks import get_amount_hand_tilted, transform_screen_landmarks, get_length_from_landmarks, calculate_world_coordinates, calculate_center
+from landmarks import Coordinate, get_amount_hand_tilted, transform_screen_landmarks, get_length_from_landmarks, calculate_world_coordinates, calculate_center
 from mp_hand_tracking import initialize_hand_detector, process_image, hand_connections
 from plotting import plotting_process
 from imutils.video import WebcamVideoStream
 import imutils
 import multiprocessing
 
-@dataclass
-class Coordinate:
-    x: float
-    y: float
-    z: float
-
 def main():
+
+    #Starting multiprocess
     plot_queue = multiprocessing.Queue()
     control_queue = multiprocessing.Queue()
 
     plot_proc = multiprocessing.Process(target=plotting_process, args=(plot_queue, control_queue))
     plot_proc.start()
 
+    # Initialize webcam and hand tracking
     vs = WebcamVideoStream(src=0).start()   
     hands = initialize_hand_detector()
     open_camera = True
@@ -41,17 +43,15 @@ def main():
         if results.multi_hand_landmarks:
             
             hand_landmarks = results.multi_hand_landmarks[0]
-            wrist_screen, _ = hand_landmarks.landmark[0], hand_landmarks.landmark[9]
+            wrist_screen = hand_landmarks.landmark[0]
             world_landmarks = results.multi_hand_world_landmarks[0]
             centre_world = world_landmarks.landmark[0]
 
-            # Calculating area
-            world_area = get_length_from_landmarks(results.multi_hand_world_landmarks[0].landmark, 5, 17) + get_length_from_landmarks(results.multi_hand_world_landmarks[0].landmark, 0, 9);
-            screen_area = get_length_from_landmarks(transform_screen_landmarks(results.multi_hand_landmarks[0].landmark, image), 5, 17) + get_length_from_landmarks(transform_screen_landmarks(results.multi_hand_landmarks[0].landmark, image), 0, 9);
+            # Calculating depth (wrist z coordinate)
+            world_length = get_length_from_landmarks(results.multi_hand_world_landmarks[0].landmark, 5, 17) + get_length_from_landmarks(results.multi_hand_world_landmarks[0].landmark, 0, 9);
+            screen_length = get_length_from_landmarks(transform_screen_landmarks(results.multi_hand_landmarks[0].landmark, image), 5, 17) + get_length_from_landmarks(transform_screen_landmarks(results.multi_hand_landmarks[0].landmark, image), 0, 9);
 
-            wrist_screen.z = world_area * 200 / screen_area;
-
-            # Voodoo magic
+            wrist_screen.z = world_length * 200 / screen_length;
             wrist_screen.z += wrist_screen.z * 0.65 * get_amount_hand_tilted(results.multi_hand_world_landmarks[0].landmark) ** 2.3;
 
             wrist_screen.x -= 0.5
@@ -71,6 +71,7 @@ def main():
             y_data = []
             z_data = []
 
+            # Creating coordinate datapoints for hand
             for part in parts.values():
                 x_part = []
                 y_part = []

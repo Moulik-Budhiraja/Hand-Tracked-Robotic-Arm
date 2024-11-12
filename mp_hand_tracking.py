@@ -1,4 +1,11 @@
-# mp_hand_tracking.py
+####################
+#
+# file: mp_hand_tracking.py
+#
+# description: Contains functions related to MediaPipe actions including initialization of the hand detector, 
+#              processing the image, an drawing landmarks on the screen.
+#
+####################
 
 import cv2
 import mediapipe as mp

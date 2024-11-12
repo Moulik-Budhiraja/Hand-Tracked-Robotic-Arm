@@ -1,4 +1,10 @@
-# plotting.py
+####################
+#
+# file: plotting.py
+#
+# description: Handles all actions related to plotting 2D graph for distance and 3D graph for hand visualization
+#
+####################
 
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
