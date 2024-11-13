@@ -47,13 +47,13 @@ def main():
 
         if results.multi_hand_landmarks:
             hand_landmarks = results.multi_hand_landmarks[0]
-            wrist_screen, middle_knuckle_screen = hand_landmarks.landmark[0], hand_landmarks.landmark[9]
-            index_knuckle_screen, pinky_knuckle_screen = hand_landmarks.landmark[5], hand_landmarks.landmark[17]
+            world_landmarks = results.multi_hand_world_landmarks[0]
+            centre_world = world_landmarks.landmark[0]
+            wrist_screen, middle_knuckle_screen, index_knuckle_screen, pinky_knuckle_screen = hand_landmarks.landmark[0], hand_landmarks.landmark[9], world_landmarks.landmark[5], world_landmarks.landmark[17]
+            wrist_world, middle_knuckle_world, index_knuckle_world, pinky_knuckle_world = world_landmarks.landmark[0], world_landmarks.landmark[9], world_landmarks.landmark[5], world_landmarks.landmark[17]
             current_distance_vertical = calculate_distance(wrist_screen, middle_knuckle_screen, width, height)
             current_distance_horizontal = calculate_distance(index_knuckle_screen, pinky_knuckle_screen, width, height)
 
-            world_landmarks = results.multi_hand_world_landmarks[0]
-            centre_world = world_landmarks.landmark[0]
 
             if reset:
                 reference_distance_vertical = current_distance_vertical
@@ -72,10 +72,14 @@ def main():
             else:
                 estimated_distance = reference_distance_depth / scale_horizontal - (index_knuckle_screen.z + pinky_knuckle_screen.z) / 2 
 
-            if reset:
-                pass 
-            else:
-                estimated_distance = 0.4 * prev_estimated_distance + 0.6 * estimated_distance - 0.3
+            # if reset:
+            #     pass 
+            # else:
+            #     estimated_distance = 0.4 * prev_estimated_distance + 0.6 * estimated_distance - 0.3
+
+            if (frame_counter % 3 == 0):
+                print(scale_vertical, scale_horizontal)
+            
 
             wrist_screen.z = estimated_distance
 
