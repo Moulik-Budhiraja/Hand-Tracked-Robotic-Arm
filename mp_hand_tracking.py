@@ -1,4 +1,11 @@
-# mp_hand_tracking.py
+####################
+#
+# file: mp_hand_tracking.py
+#
+# description: Contains functions related to MediaPipe actions including initialization of the hand detector, 
+#              processing the image, an drawing landmarks on the screen.
+#
+####################
 
 import cv2
 import mediapipe as mp
@@ -23,12 +30,12 @@ def process_image(hands, image):
     image.flags.writeable = True
     return results
 
-def hand_connections(image, hand_landmarks, coordinates):
-    for hand_landmarks in coordinates:
+def hand_connections(image, landmarks):
+    for hand_landmarks in landmarks:
         mp.solutions.drawing_utils.draw_landmarks(
             image,
             hand_landmarks,
             mp.solutions.hands.HAND_CONNECTIONS,
-            mp.solutions.drawing_styles.get_default_hand_landmarks_style(),
-            mp.solutions.drawing_styles.get_default_hand_connections_style()
+            mp.solutions.drawing_utils.DrawingSpec(circle_radius=0, thickness=0),
+            mp.solutions.drawing_styles.get_default_hand_connections_style(),
         )
