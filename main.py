@@ -1,91 +1,65 @@
-# main.py
+####################
+#
+# file: main.py
+#
+# description: Converts real-time video footage of hand movement into 3d coordinates for the hand.
+#
+####################
 
 import cv2
-from dataclasses import dataclass
-from landmarks import calculate_distance, calculate_world_coordinates, calculate_center
+from landmarks import Coordinate, get_amount_hand_tilted, transform_screen_landmarks, get_length_from_landmarks, calculate_world_coordinates, calculate_center
 from mp_hand_tracking import initialize_hand_detector, process_image, hand_connections
 from plotting import plotting_process
 from imutils.video import WebcamVideoStream
+from arms import Arms
 import imutils
 import multiprocessing
-import time
-
-@dataclass
-class coordinates:
-    x: float
-    y: float
-    z: float
 
 def main():
+
+    #Starting multiprocess
     plot_queue = multiprocessing.Queue()
     control_queue = multiprocessing.Queue()
 
     plot_proc = multiprocessing.Process(target=plotting_process, args=(plot_queue, control_queue))
     plot_proc.start()
 
+    # Initialize webcam and hand tracking
     vs = WebcamVideoStream(src=0).start()   
     hands = initialize_hand_detector()
     open_camera = True
 
     frame_counter = 0
-    reset = True
-    estimated_distance = None
-    prev_estimated_distance = None
-    center = coordinates(x=0, y=0, z=0)
+    center = Coordinate(x=0, y=0.5, z=0.5)
+    wrist_location = Coordinate(x=0, y=0, z=0)
     sensitivity = 1
     prev_sensitivity = 1
+
+    arms = Arms()
+
 
     while open_camera:
         key = cv2.waitKey(20)
         image = vs.read() 
-        image = imutils.resize(image, width=400)
-
-        height = image.shape[0] 
-        width = image.shape[1]
+        image = imutils.resize(image, width=400, height=300)
+        
 
         results = process_image(hands, image)
 
         if results.multi_hand_landmarks:
+            
             hand_landmarks = results.multi_hand_landmarks[0]
+            wrist_screen = hand_landmarks.landmark[0]
             world_landmarks = results.multi_hand_world_landmarks[0]
             centre_world = world_landmarks.landmark[0]
-            wrist_screen, middle_knuckle_screen, index_knuckle_screen, pinky_knuckle_screen = hand_landmarks.landmark[0], hand_landmarks.landmark[9], world_landmarks.landmark[5], world_landmarks.landmark[17]
-            wrist_world, middle_knuckle_world, index_knuckle_world, pinky_knuckle_world = world_landmarks.landmark[0], world_landmarks.landmark[9], world_landmarks.landmark[5], world_landmarks.landmark[17]
-            current_distance_vertical = calculate_distance(wrist_screen, middle_knuckle_screen, width, height)
-            current_distance_horizontal = calculate_distance(index_knuckle_screen, pinky_knuckle_screen, width, height)
 
+            # Calculating depth (wrist z coordinate)
+            world_length = get_length_from_landmarks(results.multi_hand_world_landmarks[0].landmark, 5, 17) + get_length_from_landmarks(results.multi_hand_world_landmarks[0].landmark, 0, 9);
+            screen_length = get_length_from_landmarks(transform_screen_landmarks(results.multi_hand_landmarks[0].landmark, image), 5, 17) + get_length_from_landmarks(transform_screen_landmarks(results.multi_hand_landmarks[0].landmark, image), 0, 9);
 
-            if reset:
-                reference_distance_vertical = current_distance_vertical
-                reference_distance_horizontal = current_distance_horizontal
-                reference_distance_depth = 1
-                estimated_distance = reference_distance_depth
-                prev_estimated_distance = reference_distance_depth
-                reset = False
-            else:
-                prev_estimated_distance = estimated_distance
+            wrist_screen.z = world_length * 200 / screen_length;
+            wrist_screen.z += wrist_screen.z * 0.65 * get_amount_hand_tilted(results.multi_hand_world_landmarks[0].landmark) ** 2.3 + 0.05;
 
-            scale_vertical = current_distance_vertical / reference_distance_vertical
-            scale_horizontal = current_distance_horizontal / reference_distance_horizontal
-            if (scale_vertical * 0.95 > scale_horizontal):
-                estimated_distance = reference_distance_depth / scale_vertical
-            else:
-                estimated_distance = reference_distance_depth / scale_horizontal - (index_knuckle_screen.z + pinky_knuckle_screen.z) / 2 
-
-            # if reset:
-            #     pass 
-            # else:
-            #     estimated_distance = 0.4 * prev_estimated_distance + 0.6 * estimated_distance - 0.3
-
-            if (frame_counter % 3 == 0):
-                print(scale_vertical, scale_horizontal)
-            
-
-            wrist_screen.z = estimated_distance
-
-            wrist_screen.x -= 0.5
-            wrist_screen.y -= 0.5
-            wrist_screen.z -= 0.5
 
             parts = {
                 "palm": [0, 5, 9, 13, 17, 0],
@@ -100,6 +74,7 @@ def main():
             y_data = []
             z_data = []
 
+            # Creating coordinate datapoints for hand
             for part in parts.values():
                 x_part = []
                 y_part = []
@@ -107,9 +82,26 @@ def main():
                 for idx in part:
                     landmark = calculate_world_coordinates(centre_world, world_landmarks.landmark[idx])
 
-                    scaled_x = (landmark.x) + (wrist_screen.x * sensitivity) + center.x
-                    scaled_y = (landmark.y) + (wrist_screen.y * sensitivity) + center.y 
-                    scaled_z = (landmark.z) + (wrist_screen.z * sensitivity) + center.z 
+
+                    # wrist_screen.x = wrist_screen * sensitivity + center.x
+                    # wrist_screen.y = wrist_screen * sensitivity + center.y
+
+                    wrist_depth = ((wrist_screen.z - 0.5) * sensitivity * 2) + center.z
+                    if (wrist_depth <= 0):
+                        wrist_depth = 0
+
+                    if (wrist_depth >= 1):
+                        wrist_depth = 1
+
+                    scaled_x =  -1 *((landmark.x) + ((wrist_screen.x - 0.5) * 4/3 * sensitivity) - center.x)
+                    scaled_y =  -1 *((landmark.y) + ((wrist_screen.y - 0.5) * sensitivity) - center.y )
+                    scaled_z = (landmark.z) + wrist_depth
+
+
+                    if idx == 0:
+                        wrist_location.x = scaled_x
+                        wrist_location.y = scaled_y
+                        wrist_location.z = scaled_z
 
                     x_part.append(scaled_x)
                     y_part.append(scaled_y)
@@ -119,26 +111,26 @@ def main():
                 y_data.append(y_part)
                 z_data.append(z_part)
 
+
+            if (arms.check_in_range(wrist_location)):
+                arm_point = arms.find_point(wrist_location)
+            else:
+                arm_point = None
+
             plot_queue.put({
                 "type": "scatter",
                 "x_data": x_data,
                 "y_data": y_data,
                 "z_data": z_data,
                 "center": center,
-                "sensitivity": sensitivity
+                "sensitivity": sensitivity,
+                "arm_point": arm_point,
+                "wrist_point": wrist_location
             })
-
-            # plot_queue.put({
-            #     "type": "2d",
-            #     "frame": frame_counter,
-            #     "x": x_data[0][0],
-            #     "y": y_data[0][0],
-            #     "z": z_data[0][0]
-            # })
 
             frame_counter += 1
 
-            hand_connections(image, hand_landmarks, results.multi_hand_landmarks)
+            hand_connections(image, results.multi_hand_landmarks)
 
         image = cv2.flip(image, 1)
 
@@ -147,13 +139,13 @@ def main():
         # Handle key presses
         if key & 0xFF == ord('a'):
             if sensitivity > 0.1:
-                print("decreased sensitivity")
+                print("decreased sensitivity: ", sensitivity)
                 sensitivity -= 0.1
             else:
                 print("min sensitivity reached")
         if key & 0xFF == ord('d'):
             if sensitivity < 1:
-                print("increased sensitivity")
+                print("increased sensitivity: ", sensitivity)
                 sensitivity += 0.1
             else:
                 print("max sensitivity reached")
@@ -163,14 +155,18 @@ def main():
         if key & 0xFF == ord('q'):
             open_camera = False
 
+        print(wrist_location.x)
         # Update center based on sensitivity changes
         if sensitivity < prev_sensitivity:
-            center = calculate_center(wrist_screen, center, sensitivity / prev_sensitivity)
+            print(wrist_location, center)
+            center = calculate_center(wrist_location, center, sensitivity / prev_sensitivity)
             prev_sensitivity = sensitivity
         if sensitivity > prev_sensitivity:
-            origin = coordinates(x=0, y=0, z=0)
+            origin = Coordinate(x=0, y=0.5, z=0.5)
             center = calculate_center(center, origin, sensitivity)
             prev_sensitivity = sensitivity
+
+        
 
     # Send termination signal to plotting process
     plot_queue.put("TERMINATE")
