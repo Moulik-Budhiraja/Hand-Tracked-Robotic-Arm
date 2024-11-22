@@ -40,12 +40,13 @@ class Arms:
         first_angle = vector_angle + alpha
         beta = (math.acos(self.first_arm_length / self.second_arm_length * math.sqrt(1 - (math.cos(alpha) ** 2))))
         second_angle = math.pi/2 + alpha - beta
-        return [first_angle, second_angle]
+        base_angle = self.base_rotation(coordinate)
+        return [base_angle, first_angle, second_angle]
     
     def find_point(self, coordinate):
-        beta = self.find_angles(coordinate)[0]
-        alpha = self.base_rotation(coordinate)
-        gamma = self.find_angles(coordinate)[1]
+        alpha = self.find_angles(coordinate)[0]
+        beta = self.find_angles(coordinate)[1]
+        gamma = self.find_angles(coordinate)[2]
         
         point =  Coordinate(x = self.first_arm_length * math.sin(alpha) * math.cos(beta), y = self.first_arm_length * math.cos(alpha) * math.cos(beta), z = self.first_arm_length * math.sin(beta))
         len = math.sqrt((point.x - coordinate.x) ** 2 + (point.y - coordinate.y) ** 2 + (point.z - coordinate.z) ** 2)
