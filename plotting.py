@@ -13,11 +13,13 @@ from dataclasses import dataclass
 import multiprocessing
 import time
 
+
 @dataclass
 class Point:
     x: float
     y: float
     z: float
+
 
 class Plot:
     def __init__(self):
@@ -28,41 +30,37 @@ class Plot:
         self.ax_scatter = self.fig_scatter.add_subplot(projection="3d")
         self.ax_scatter.view_init(elev=0, azim=-90)
         self.scatterplot = self.ax_scatter.scatter([], [], [], s=50)
-        self.palmline, = self.ax_scatter.plot([], [], [], color="red")
-        self.thumbline, = self.ax_scatter.plot([], [], [], color="black")
-        self.indexline, = self.ax_scatter.plot([], [], [], color="black")
-        self.middleline, = self.ax_scatter.plot([], [], [], color="black")
-        self.ringline, = self.ax_scatter.plot([], [], [], color="black")
-        self.pinkyline, = self.ax_scatter.plot([], [], [], color="black")
+        (self.palmline,) = self.ax_scatter.plot([], [], [], color="red")
+        (self.thumbline,) = self.ax_scatter.plot([], [], [], color="black")
+        (self.indexline,) = self.ax_scatter.plot([], [], [], color="black")
+        (self.middleline,) = self.ax_scatter.plot([], [], [], color="black")
+        (self.ringline,) = self.ax_scatter.plot([], [], [], color="black")
+        (self.pinkyline,) = self.ax_scatter.plot([], [], [], color="black")
 
-        self.first_arm, = self.ax_scatter.plot([], [], [], color="blue", linewidth=2)
-        self.second_arm, = self.ax_scatter.plot([], [], [], color="green", linewidth=2)
+        (self.first_arm,) = self.ax_scatter.plot([], [], [], color="blue", linewidth=2)
+        (self.second_arm,) = self.ax_scatter.plot([], [], [], color="green", linewidth=2)
 
         # Cube
-        self.edges = [
-            (0, 1), (1, 2), (2, 3), (3, 0),  
-            (4, 5), (5, 6), (6, 7), (7, 4),  
-            (0, 4), (1, 5), (2, 6), (3, 7)   
-        ]
+        self.edges = [(0, 1), (1, 2), (2, 3), (3, 0), (4, 5), (5, 6), (6, 7), (7, 4), (0, 4), (1, 5), (2, 6), (3, 7)]
 
         self.cube_lines = []
         for edge in self.edges:
-            line, = self.ax_scatter.plot([], [], [], color='b')
+            (line,) = self.ax_scatter.plot([], [], [], color="b")
             self.cube_lines.append(line)
 
         # Set
-        self.ax_scatter.set_xlim(-2/3, 2/3)
+        self.ax_scatter.set_xlim(-2 / 3, 2 / 3)
         self.ax_scatter.set_ylim(0, 1)
-        self.ax_scatter.set_zlim(0, 1)
+        self.ax_scatter.set_zlim(0.5, 1)
 
-        self.ax_scatter.set_xlabel('X axis')
-        self.ax_scatter.set_ylabel('Y axis')
-        self.ax_scatter.set_zlabel('Z axis')
+        self.ax_scatter.set_xlabel("X axis")
+        self.ax_scatter.set_ylabel("Y axis")
+        self.ax_scatter.set_zlabel("Z axis")
 
-        self.ax_scatter.set_box_aspect([4/3,1,1])
+        self.ax_scatter.set_box_aspect([4 / 3, 1, 3 / 2])
 
     def update_scatter_plot(self, x_data, y_data, z_data, center, sensitivity, arm_point, wrist_point):
-        # Update Lines 
+        # Update Lines
         self.palmline.set_data_3d(x_data[0], y_data[0], z_data[0])
         self.thumbline.set_data_3d(x_data[1], y_data[1], z_data[1])
         self.indexline.set_data_3d(x_data[2], y_data[2], z_data[2])
@@ -73,16 +71,18 @@ class Plot:
         # Cube
         half_size = sensitivity / 2
 
-        vertices = np.array([
-            [center.x - (4/3 * half_size), center.y - half_size, center.z - half_size],
-            [center.x + (4/3 * half_size), center.y - half_size, center.z - half_size],
-            [center.x + (4/3 * half_size), center.y + half_size, center.z - half_size],
-            [center.x - (4/3 * half_size), center.y + half_size, center.z - half_size],
-            [center.x - (4/3 * half_size), center.y - half_size, center.z + half_size],
-            [center.x + (4/3 * half_size), center.y - half_size, center.z + half_size],
-            [center.x + (4/3 * half_size), center.y + half_size, center.z + half_size],
-            [center.x - (4/3 * half_size), center.y + half_size, center.z + half_size]
-        ])
+        vertices = np.array(
+            [
+                [center.x - (4 / 3 * half_size), center.y - half_size, center.z - half_size],
+                [center.x + (4 / 3 * half_size), center.y - half_size, center.z - half_size],
+                [center.x + (4 / 3 * half_size), center.y + half_size, center.z - half_size],
+                [center.x - (4 / 3 * half_size), center.y + half_size, center.z - half_size],
+                [center.x - (4 / 3 * half_size), center.y - half_size, center.z + half_size],
+                [center.x + (4 / 3 * half_size), center.y - half_size, center.z + half_size],
+                [center.x + (4 / 3 * half_size), center.y + half_size, center.z + half_size],
+                [center.x - (4 / 3 * half_size), center.y + half_size, center.z + half_size],
+            ]
+        )
 
         for line, edge in zip(self.cube_lines, self.edges):
             points = vertices[list(edge)]
@@ -136,18 +136,13 @@ def plotting_process(plot_queue, control_queue):
                         latest_data["center"],
                         latest_data["sensitivity"],
                         arm_point=latest_data.get("arm_point"),
-                        wrist_point=latest_data.get("wrist_point")
+                        wrist_point=latest_data.get("wrist_point"),
                     )
                 elif latest_data.get("type") == "2d":
-                    plotter.update_2d_plot(
-                        latest_data["frame"],
-                        latest_data["x"],
-                        latest_data["y"],
-                        latest_data["z"]
-                    )
+                    plotter.update_2d_plot(latest_data["frame"], latest_data["x"], latest_data["y"], latest_data["z"])
             except Exception as e:
                 print(f"Error updating plot: {e}")
 
         time.sleep(0.001)
 
-    plt.close('all')
+    plt.close("all")
