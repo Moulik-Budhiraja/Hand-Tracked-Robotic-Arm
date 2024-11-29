@@ -23,19 +23,10 @@ class Plot:
     def __init__(self):
         plt.ion()
 
-        # Initialize 2D Plot
-        self.fig_coords = plt.figure()
-        self.ax_coords = self.fig_coords.add_subplot()
-        self.x_data, self.y_data, self.z_data, self.time_data = [], [], [], []
-        self.x_line, = self.ax_coords.plot([], [], label="x")
-        self.y_line, = self.ax_coords.plot([], [], label="y")
-        self.z_line, = self.ax_coords.plot([], [], label="z")
-        self.fig_coords.legend(loc="upper left")
-
         # Initialize 3D Scatter Plot
         self.fig_scatter = plt.figure()
         self.ax_scatter = self.fig_scatter.add_subplot(projection="3d")
-        self.ax_scatter.view_init(elev=90, azim=90)
+        self.ax_scatter.view_init(elev=0, azim=-90)
         self.scatterplot = self.ax_scatter.scatter([], [], [], s=50)
         self.palmline, = self.ax_scatter.plot([], [], [], color="red")
         self.thumbline, = self.ax_scatter.plot([], [], [], color="black")
@@ -43,6 +34,10 @@ class Plot:
         self.middleline, = self.ax_scatter.plot([], [], [], color="black")
         self.ringline, = self.ax_scatter.plot([], [], [], color="black")
         self.pinkyline, = self.ax_scatter.plot([], [], [], color="black")
+
+        self.first_arm, = self.ax_scatter.plot([], [], [], color="blue", linewidth=2)
+        self.second_arm, = self.ax_scatter.plot([], [], [], color="green", linewidth=2)
+        self.base_arm, = self.ax_scatter.plot([], [], [], color="red", linewidth=2)
 
         # Cube
         self.edges = [
@@ -57,17 +52,17 @@ class Plot:
             self.cube_lines.append(line)
 
         # Set
-        self.ax_scatter.set_xlim(-0.5, 0.5)
-        self.ax_scatter.set_ylim(-0.5, 0.5)
-        self.ax_scatter.set_zlim(-0.5, 0.5)
+        self.ax_scatter.set_xlim(-2/3, 2/3)
+        self.ax_scatter.set_ylim(0, 1)
+        self.ax_scatter.set_zlim(-0.5, 1)
 
         self.ax_scatter.set_xlabel('X axis')
         self.ax_scatter.set_ylabel('Y axis')
         self.ax_scatter.set_zlabel('Z axis')
 
-        self.ax_scatter.set_box_aspect([1,1,1])
+        self.ax_scatter.set_box_aspect([4/3,1,3/2])
 
-    def update_scatter_plot(self, x_data, y_data, z_data, center, sensitivity):
+    def update_scatter_plot(self, x_data, y_data, z_data, center, sensitivity, arm_point, wrist_point):
         # Update Lines 
         self.palmline.set_data_3d(x_data[0], y_data[0], z_data[0])
         self.thumbline.set_data_3d(x_data[1], y_data[1], z_data[1])
@@ -80,14 +75,14 @@ class Plot:
         half_size = sensitivity / 2
 
         vertices = np.array([
-            [center.x - half_size, center.y - half_size, center.z - half_size],
-            [center.x + half_size, center.y - half_size, center.z - half_size],
-            [center.x + half_size, center.y + half_size, center.z - half_size],
-            [center.x - half_size, center.y + half_size, center.z - half_size],
-            [center.x - half_size, center.y - half_size, center.z + half_size],
-            [center.x + half_size, center.y - half_size, center.z + half_size],
-            [center.x + half_size, center.y + half_size, center.z + half_size],
-            [center.x - half_size, center.y + half_size, center.z + half_size]
+            [center.x - (4/3 * half_size), center.y - half_size, center.z - (3/2 * half_size)],
+            [center.x + (4/3 * half_size), center.y - half_size, center.z - (3/2 * half_size)],
+            [center.x + (4/3 * half_size), center.y + half_size, center.z - (3/2 * half_size)],
+            [center.x - (4/3 * half_size), center.y + half_size, center.z - (3/2 * half_size)],
+            [center.x - (4/3 * half_size), center.y - half_size, center.z + (3/2 * half_size)],
+            [center.x + (4/3 * half_size), center.y - half_size, center.z + (3/2 * half_size)],
+            [center.x + (4/3 * half_size), center.y + half_size, center.z + (3/2 * half_size)],
+            [center.x - (4/3 * half_size), center.y + half_size, center.z + (3/2 * half_size)]
         ])
 
         for line, edge in zip(self.cube_lines, self.edges):
@@ -95,32 +90,26 @@ class Plot:
             line.set_data(points[:, 0], points[:, 1])
             line.set_3d_properties(points[:, 2])
 
+        if arm_point:
+            self.first_arm.set_data([0, arm_point.x], [0, arm_point.y])
+            self.first_arm.set_3d_properties([0, arm_point.z])
+        else:
+            self.first_arm.set_data([], [])
+            self.first_arm.set_3d_properties([])
+
+        if arm_point and wrist_point:
+            self.second_arm.set_data([arm_point.x, wrist_point.x], [arm_point.y, wrist_point.y])
+            self.second_arm.set_3d_properties([arm_point.z, wrist_point.z])
+        else:
+            self.second_arm.set_data([], [])
+            self.second_arm.set_3d_properties([])
+
+        self.base_arm.set_data([0, 0], [0, 0])
+        self.base_arm.set_3d_properties([-0.5, 0])
+
         self.fig_scatter.canvas.draw()
         self.fig_scatter.canvas.flush_events()
 
-    def update_2d_plot(self, frame, x, y, z):
-        self.time_data.append(frame)
-        self.x_data.append(x)
-        self.y_data.append(y)
-        self.z_data.append(z)
-
-        self.x_line.set_xdata(self.time_data)
-        self.y_line.set_xdata(self.time_data)
-        self.z_line.set_xdata(self.time_data)
-
-        self.x_line.set_ydata(self.x_data)
-        self.y_line.set_ydata(self.y_data)
-        self.z_line.set_ydata(self.z_data)
-
-        if len(self.time_data) > 50:
-            self.ax_coords.set_xlim(max(0, frame - 50), frame)
-        else:
-            self.ax_coords.set_xlim(0, 50)
-
-        self.ax_coords.set_ylim(0, 2) 
-
-        self.fig_coords.canvas.draw()
-        self.fig_coords.canvas.flush_events()
 
 def plotting_process(plot_queue, control_queue):
     plotter = Plot()
@@ -149,7 +138,9 @@ def plotting_process(plot_queue, control_queue):
                         latest_data["y_data"],
                         latest_data["z_data"],
                         latest_data["center"],
-                        latest_data["sensitivity"]
+                        latest_data["sensitivity"],
+                        arm_point=latest_data.get("arm_point"),
+                        wrist_point=latest_data.get("wrist_point")
                     )
                 elif latest_data.get("type") == "2d":
                     plotter.update_2d_plot(

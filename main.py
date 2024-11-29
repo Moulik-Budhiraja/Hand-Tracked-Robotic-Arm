@@ -11,6 +11,7 @@ from landmarks import Coordinate, get_amount_hand_tilted, transform_screen_landm
 from mp_hand_tracking import initialize_hand_detector, process_image, hand_connections
 from plotting import plotting_process
 from imutils.video import WebcamVideoStream
+from arms import Arms
 import imutils
 import multiprocessing
 
@@ -29,14 +30,19 @@ def main():
     open_camera = True
 
     frame_counter = 0
-    center = Coordinate(x=0, y=0, z=0)
+    center = Coordinate(x=0, y=0.5, z=0.25)
+    wrist_location = Coordinate(x=0, y=0, z=0)
     sensitivity = 1
     prev_sensitivity = 1
+
+    arms = Arms()
+
 
     while open_camera:
         key = cv2.waitKey(20)
         image = vs.read() 
-        image = imutils.resize(image, width=400)
+        image = imutils.resize(image, width=400, height=300)
+        
 
         results = process_image(hands, image)
 
@@ -52,7 +58,8 @@ def main():
             screen_length = get_length_from_landmarks(transform_screen_landmarks(results.multi_hand_landmarks[0].landmark, image), 5, 17) + get_length_from_landmarks(transform_screen_landmarks(results.multi_hand_landmarks[0].landmark, image), 0, 9);
 
             wrist_screen.z = world_length * 200 / screen_length;
-            wrist_screen.z += wrist_screen.z * 0.65 * get_amount_hand_tilted(results.multi_hand_world_landmarks[0].landmark) ** 2.3;
+            wrist_screen.z += wrist_screen.z * 0.65 * get_amount_hand_tilted(results.multi_hand_world_landmarks[0].landmark) ** 2.3 + 0.05;
+
 
             parts = {
                 "palm": [0, 5, 9, 13, 17, 0],
@@ -75,9 +82,22 @@ def main():
                 for idx in part:
                     landmark = calculate_world_coordinates(centre_world, world_landmarks.landmark[idx])
 
-                    scaled_x = (landmark.x) + ((wrist_screen.x - 0.5) * sensitivity) + center.x
-                    scaled_y = (landmark.y) + ((wrist_screen.y - 0.5) * sensitivity) + center.y
-                    scaled_z = (landmark.z) + ((wrist_screen.z - 0.5) * sensitivity) + center.z
+                    wrist_depth = ((wrist_screen.z - 0.5) * sensitivity * 3) + center.z
+                    if (wrist_depth <= -0.5):
+                        wrist_depth = 0.5
+
+                    if (wrist_depth >= 1):
+                        wrist_depth = 1
+
+                    scaled_x =  -1 *((landmark.x) + ((wrist_screen.x - 0.5) * 4/3 * sensitivity) - center.x)
+                    scaled_y =  -1 *((landmark.y) + ((wrist_screen.y - 0.5) * sensitivity) - center.y )
+                    scaled_z = (landmark.z) + wrist_depth
+
+
+                    if idx == 0:
+                        wrist_location.x = scaled_x
+                        wrist_location.y = scaled_y
+                        wrist_location.z = scaled_z
 
                     x_part.append(scaled_x)
                     y_part.append(scaled_y)
@@ -87,13 +107,21 @@ def main():
                 y_data.append(y_part)
                 z_data.append(z_part)
 
+
+            if (arms.check_in_range(wrist_location)):
+                arm_point = arms.find_point(wrist_location)
+            else:
+                arm_point = None
+
             plot_queue.put({
                 "type": "scatter",
                 "x_data": x_data,
                 "y_data": y_data,
                 "z_data": z_data,
                 "center": center,
-                "sensitivity": sensitivity
+                "sensitivity": sensitivity,
+                "arm_point": arm_point,
+                "wrist_point": wrist_location
             })
 
             frame_counter += 1
@@ -107,14 +135,14 @@ def main():
         # Handle key presses
         if key & 0xFF == ord('a'):
             if sensitivity > 0.1:
-                print("decreased sensitivity")
-                sensitivity -= 0.1
+                print("decreased sensitivity: ", sensitivity)
+                sensitivity -= 0.007
             else:
                 print("min sensitivity reached")
         if key & 0xFF == ord('d'):
             if sensitivity < 1:
-                print("increased sensitivity")
-                sensitivity += 0.1
+                print("increased sensitivity: ", sensitivity)
+                sensitivity += 0.007
             else:
                 print("max sensitivity reached")
         if key & 0xFF == ord('c'):
@@ -123,14 +151,18 @@ def main():
         if key & 0xFF == ord('q'):
             open_camera = False
 
+        print(wrist_location.x)
         # Update center based on sensitivity changes
         if sensitivity < prev_sensitivity:
-            center = calculate_center(wrist_screen, center, sensitivity / prev_sensitivity)
+            print(wrist_location, center)
+            center = calculate_center(wrist_location, center, sensitivity / prev_sensitivity)
             prev_sensitivity = sensitivity
         if sensitivity > prev_sensitivity:
-            origin = Coordinate(x=0, y=0, z=0)
+            origin = Coordinate(x=0, y=0.5, z=0.25)
             center = calculate_center(center, origin, sensitivity)
             prev_sensitivity = sensitivity
+
+        
 
     # Send termination signal to plotting process
     plot_queue.put("TERMINATE")

@@ -46,7 +46,7 @@ def calculate_world_coordinates(centre, landmark):
 
 def calculate_center(point, center, sensitivity):
     center.x = ((point.x - center.x) * (1 - sensitivity)) + center.x
-    center.y = ((point.y - center.y) * (1 - sensitivity)) + center.y
-    center.z = ((point.z - center.z) * (1 - sensitivity)) + center.z
+    center.y = ((point.y - center.y) * (1 - sensitivity)) + center.y 
+    center.z = ((point.z - center.z) * (1 - sensitivity)) + center.z 
 
     return center
