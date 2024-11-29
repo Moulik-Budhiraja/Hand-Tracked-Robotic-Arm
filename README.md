@@ -26,9 +26,11 @@ python -m venv venv
 pip install -r requirements.txt
 ```
 
-## Acknowledgments
+## Licenses and Notices
 
-This project utilizes the following open-source libraries:
+This project uses third-party open-source software:
 
-- **[MediaPipe](https://github.com/google/mediapipe):** A cross-platform machine learning framework developed by Google. Licensed under the [Apache License 2.0](https://github.com/google/mediapipe/blob/master/LICENSE).
-- **[OpenCV](https://github.com/opencv/opencv):** An open-source computer vision library. Licensed under the [Apache License 2.0](https://github.com/opencv/opencv/blob/master/LICENSE).
+- **MediaPipe**: Licensed under the [Apache License 2.0](LICENSES/mediapipe_license.txt). See [MediaPipe](https://github.com/google/mediapipe) for more details.
+- **OpenCV**: Licensed under the [Apache License 2.0](LICENSES/opencv_license.txt). See [OpenCV](https://github.com/opencv/opencv) for more details.
+
+See the [NOTICE](NOTICE) file for additional acknowledgments.
