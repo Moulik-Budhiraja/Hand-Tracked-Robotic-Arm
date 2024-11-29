@@ -1,0 +1,16 @@
+NOTICE
+======
+
+This project uses the following third-party open-source libraries:
+
+1. **MediaPipe**
+   - URL: https://github.com/google/mediapipe
+   - License: Apache License 2.0
+   - Copyright (c) Google LLC
+
+2. **OpenCV**
+   - URL: https://github.com/opencv/opencv
+   - License: Apache License 2.0
+   - Copyright (c) OpenCV team and contributors
+
+The original licenses for these projects can be found in the `LICENSES` folder of this repository.
