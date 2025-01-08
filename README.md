@@ -2,6 +2,8 @@
 
 ---
 
+[![IMAGE ALT TEXT HERE](https://img.youtube.com/vi/fg-T3luJGmg/0.jpg)](https://www.youtube.com/watch?v=fg-T3luJGmg)
+
 ## Team Members
 
 - Moulik Budhiraja
